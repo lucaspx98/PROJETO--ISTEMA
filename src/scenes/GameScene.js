@@ -3,6 +3,7 @@ import { GAME_HEIGHT, GAME_WIDTH, GROUND_Y } from '../config.js';
 import { Save } from '../storage.js';
 import { Sfx } from '../audio.js';
 import { Ads } from '../ads.js';
+import { Music } from '../music.js';
 import { getSkin } from '../skins.js';
 import { background, button, coinCounter, text } from '../ui.js';
 
@@ -20,6 +21,8 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     Ads.hideBanner();
+    Music.start();
+    Music.duck(false);
     this.bg = background(this);
 
     this.speed = START_SPEED;
@@ -281,6 +284,7 @@ export class GameScene extends Phaser.Scene {
     this.player.setVisible(false);
     this.trail.stop();
     this.physics.pause();
+    Music.duck(true);
 
     Save.addCoins(this.coinsRun - this.coinsBanked);
     this.coinsBanked = this.coinsRun;
@@ -322,6 +326,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.trail.start();
     this.physics.resume();
+    Music.duck(false);
     this.dead = false;
     this.scene.resume();
   }
@@ -337,6 +342,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.pause();
     this.tweens.pauseAll();
     this.trail.pause();
+    Music.pause(true);
 
     const overlay = this.add.container(0, 0).setDepth(20);
     overlay.add(this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.6).setOrigin(0).setInteractive());
@@ -348,8 +354,14 @@ export class GameScene extends Phaser.Scene {
         this.physics.resume();
         this.tweens.resumeAll();
         this.trail.resume();
+        Music.pause(false);
       }, 30),
     );
-    overlay.add(button(this, GAME_WIDTH / 2, 370, 280, 64, 'Menu', 0x7209b7, () => this.scene.start('Menu')));
+    overlay.add(
+      button(this, GAME_WIDTH / 2, 370, 280, 64, 'Menu', 0x7209b7, () => {
+        Music.pause(false);
+        this.scene.start('Menu');
+      }),
+    );
   }
 }

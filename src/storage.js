@@ -7,6 +7,7 @@ const DEFAULTS = {
   ownedSkins: ['classico'],
   skin: 'classico',
   muted: false,
+  musicOff: false,
   gamesPlayed: 0,
 };
 

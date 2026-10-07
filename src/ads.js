@@ -10,6 +10,7 @@ import {
   RewardAdPluginEvents,
 } from '@capacitor-community/admob';
 import { ADS } from './config.js';
+import { setAdPlaying } from './audio.js';
 
 const native = Capacitor.isNativePlatform();
 const ids = ADS.android;
@@ -82,15 +83,22 @@ export const Ads = {
     if (now - lastInterstitialAt < ADS.interstitialMinIntervalMs) return;
     gameOversSinceInterstitial = 0;
     lastInterstitialAt = now;
-    if (!native) return simulate('Intersticial', 1500);
+    if (!native) return withAdAudio(() => simulate('Intersticial', 1500));
     if (!interstitialLoaded) return preloadInterstitial();
-    try {
-      interstitialLoaded = false;
-      await AdMob.showInterstitial();
-    } catch (e) {
-      console.warn('interstitial', e);
-      preloadInterstitial();
-    }
+    interstitialLoaded = false;
+    await withAdAudio(
+      () =>
+        new Promise((resolve) => {
+          const handles = [];
+          const done = () => {
+            handles.forEach((h) => h.then((x) => x.remove()));
+            resolve();
+          };
+          handles.push(AdMob.addListener(InterstitialAdPluginEvents.Dismissed, done));
+          handles.push(AdMob.addListener(InterstitialAdPluginEvents.FailedToShow, done));
+          AdMob.showInterstitial().catch(done);
+        }),
+    );
   },
 
   /** Jogador viu um anúncio recompensado: adia o próximo intersticial. */
@@ -102,7 +110,7 @@ export const Ads = {
   /** Mostra um anúncio recompensado. Resolve `true` se o jogador ganhou a recompensa. */
   async showRewarded() {
     if (!native) {
-      await simulate('Recompensado', 2500);
+      await withAdAudio(() => simulate('Recompensado', 2500));
       this.noteRewardedWatched();
       return true;
     }
@@ -111,7 +119,7 @@ export const Ads = {
       if (!rewardedLoaded) return false;
     }
     rewardedLoaded = false;
-    const earned = await new Promise((resolve) => {
+    const earned = await withAdAudio(() => new Promise((resolve) => {
       let got = false;
       const handles = [];
       const done = (v) => {
@@ -122,7 +130,7 @@ export const Ads = {
       handles.push(AdMob.addListener(RewardAdPluginEvents.Dismissed, () => done(got)));
       handles.push(AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => done(false)));
       AdMob.showRewardVideoAd().catch(() => done(false));
-    });
+    }));
     preloadRewarded();
     if (earned) this.noteRewardedWatched();
     return earned;
@@ -130,6 +138,17 @@ export const Ads = {
 
   isRewardedAvailable: () => !native || rewardedLoaded,
 };
+
+async function withAdAudio(fn) {
+  setAdPlaying(true);
+  try {
+    // Garantia: se o SDK nunca avisar que o anúncio fechou, o jogo não fica travado.
+    const timeout = new Promise((r) => setTimeout(() => r(false), 120_000));
+    return await Promise.race([fn(), timeout]);
+  } finally {
+    setAdPlaying(false);
+  }
+}
 
 async function preloadInterstitial() {
   if (!native || interstitialLoaded) return;

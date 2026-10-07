@@ -3,6 +3,7 @@ import { GAME_WIDTH, GROUND_Y } from '../config.js';
 import { Save } from '../storage.js';
 import { Sfx } from '../audio.js';
 import { Ads } from '../ads.js';
+import { Music } from '../music.js';
 import { background, button, coinCounter, text } from '../ui.js';
 
 export class MenuScene extends Phaser.Scene {
@@ -31,16 +32,31 @@ export class MenuScene extends Phaser.Scene {
     text(this, GAME_WIDTH / 2, 165, `Recorde: ${Save.get('best')}`, 30, '#ffd23f');
 
     button(this, GAME_WIDTH / 2, 255, 300, 84, '▶  JOGAR', 0x06d6a0, () => this.play(), 40);
-    button(this, GAME_WIDTH / 2 - 85, 355, 160, 64, 'Loja', 0x7209b7, () => this.scene.start('Shop'));
-    const mute = button(this, GAME_WIDTH / 2 + 85, 355, 160, 64, Save.get('muted') ? 'Som: não' : 'Som: sim', 0x3a86ff, () => {
+    button(this, GAME_WIDTH / 2 - 175, 355, 160, 64, 'Loja', 0x7209b7, () => this.scene.start('Shop'));
+    const mute = button(this, GAME_WIDTH / 2, 355, 160, 64, this.sfxLabel(), 0x3a86ff, () => {
       Save.set('muted', !Save.get('muted'));
-      mute.label.setText(Save.get('muted') ? 'Som: não' : 'Som: sim');
+      mute.label.setText(this.sfxLabel());
     }, 22);
+    const music = button(this, GAME_WIDTH / 2 + 175, 355, 160, 64, this.musicLabel(), 0xef476f, () => {
+      Music.toggle();
+      music.label.setText(this.musicLabel());
+    }, 22);
+
+    Music.start();
+    Music.duck(false);
 
     const cc = coinCounter(this, 30, 32, Save.get('coins'));
     cc.objects.forEach((o) => o.setDepth(5));
 
     this.input.keyboard?.once('keydown-SPACE', () => this.play());
+  }
+
+  sfxLabel() {
+    return Save.get('muted') ? 'Efeitos: não' : 'Efeitos: sim';
+  }
+
+  musicLabel() {
+    return Save.get('musicOff') ? 'Música: não' : 'Música: sim';
   }
 
   play() {

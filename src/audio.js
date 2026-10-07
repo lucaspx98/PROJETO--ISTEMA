@@ -3,7 +3,7 @@ import { Save } from './storage.js';
 
 let ctx;
 
-function ac() {
+export function ac() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -42,3 +42,21 @@ export const Sfx = {
   buy: () => [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => tone(f, 0.1, 'square', 0.05), i * 70)),
   unlock: () => ac(),
 };
+
+// Navegadores só liberam áudio depois de um toque; o Android não pausa o WebAudio sozinho
+// quando o app vai para segundo plano, então suspendemos manualmente.
+document.addEventListener('pointerdown', () => ac(), { capture: true });
+let adPlaying = false;
+document.addEventListener('visibilitychange', () => {
+  if (!ctx) return;
+  if (document.hidden) ctx.suspend();
+  else if (!adPlaying) ctx.resume();
+});
+
+/** Silencia todo o áudio do jogo enquanto um anúncio está na tela. */
+export function setAdPlaying(on) {
+  adPlaying = on;
+  if (!ctx) return;
+  if (on) ctx.suspend();
+  else ctx.resume();
+}
