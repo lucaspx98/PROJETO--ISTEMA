@@ -1,0 +1,11 @@
+{
+  "appId": "com.lucaspx.correcorre",
+  "appName": "Corre Corre",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#0b0820"
+  },
+  "plugins": {
+    "AdMob": {}
+  }
+}
