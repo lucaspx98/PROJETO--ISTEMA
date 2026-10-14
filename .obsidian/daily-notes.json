@@ -1,0 +1,5 @@
+{
+  "folder": "notas/diario",
+  "format": "YYYY-MM-DD",
+  "template": "notas/modelos/Diário"
+}
