@@ -5,3 +5,9 @@ dist/
 *.keystore
 *.jks
 keystore.properties
+
+# Obsidian (arquivos locais de cada máquina)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache
+.trash/

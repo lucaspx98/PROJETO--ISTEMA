@@ -64,6 +64,17 @@ Cada push no GitHub também gera o APK de teste automaticamente (aba **Actions**
 10. **Teste fechado:** contas novas precisam de um teste fechado com **12 testadores por 14 dias** antes de liberar a produção.
 11. A cada atualização, aumente `versionCode` em `android/app/build.gradle`.
 
+## Notas no Obsidian
+
+O repositório também é um cofre do [Obsidian](https://obsidian.md): as anotações ficam em `notas/` (comece por `notas/Início.md`) e são versionadas junto com o código.
+
+1. Clone o repositório no seu computador (`git clone https://github.com/lucaspx98/PROJETO--ISTEMA.git`).
+2. No Obsidian: **Abrir pasta como cofre** → escolha a pasta clonada.
+3. Para sincronizar com o GitHub de dentro do Obsidian: *Configurações → Plugins da comunidade → Procurar* → instale e ative **Git** (Vinzent03). Ele faz commit/pull/push automáticos (ex.: a cada 10 min).
+   - No celular (Android), use o mesmo plugin Git ou um app como o *GitSync*, apontando para a pasta do cofre.
+
+`node_modules/`, `dist/` e `android/` ficam ocultos no Obsidian, e os arquivos de layout locais (`.obsidian/workspace*.json`) não vão para o Git.
+
 ## Estrutura
 
 ```
@@ -78,6 +89,8 @@ src/
   scenes/           Menu, Game, GameOver, Shop
 android/            projeto Android nativo gerado pelo Capacitor
 docs/privacidade.html  modelo de política de privacidade
+notas/              anotações do projeto (cofre do Obsidian)
+.obsidian/          configuração do cofre do Obsidian
 ```
 
 ## Próximas ideias para aumentar a receita

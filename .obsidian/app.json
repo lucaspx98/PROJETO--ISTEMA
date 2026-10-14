@@ -1,0 +1,12 @@
+{
+  "userIgnoreFilters": [
+    "node_modules/",
+    "dist/",
+    "android/"
+  ],
+  "newFileLocation": "folder",
+  "newFileFolderPath": "notas",
+  "attachmentFolderPath": "notas/anexos",
+  "alwaysUpdateLinks": true,
+  "showUnsupportedFiles": false
+}
