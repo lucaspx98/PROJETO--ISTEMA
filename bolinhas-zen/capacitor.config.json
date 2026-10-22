@@ -1,0 +1,11 @@
+{
+  "appId": "com.lucaspx.bolinhaszen",
+  "appName": "Bolinhas Zen",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#1b1033"
+  },
+  "plugins": {
+    "AdMob": {}
+  }
+}

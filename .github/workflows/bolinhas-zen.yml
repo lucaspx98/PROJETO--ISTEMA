@@ -1,0 +1,66 @@
+name: Bolinhas Zen - Android build
+
+on:
+  push:
+    branches: ['**']
+    paths: ['bolinhas-zen/**', '.github/workflows/bolinhas-zen.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: bolinhas-zen
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.BZ_ANDROID_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bolinhas-zen/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Testes dos níveis + build web + sync Capacitor
+        run: |
+          npm ci
+          npm test
+          npm run build
+          npx cap sync android
+
+      - name: Debug APK (para instalar e testar no celular)
+        working-directory: bolinhas-zen/android
+        run: ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bolinhas-zen-debug-apk
+          path: bolinhas-zen/android/app/build/outputs/apk/debug/*.apk
+
+      # Gera o .aab assinado para a Play Store se os secrets do keystore estiverem configurados.
+      - name: Release AAB
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.BZ_ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.BZ_ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.BZ_ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.BZ_ANDROID_KEY_PASSWORD }}
+        working-directory: bolinhas-zen/android
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          ./gradlew bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          name: bolinhas-zen-release-aab
+          path: bolinhas-zen/android/app/build/outputs/bundle/release/*.aab

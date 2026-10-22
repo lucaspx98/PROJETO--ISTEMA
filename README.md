@@ -2,6 +2,8 @@
 
 Jogo **runner infinito** para Android, feito com [Phaser 3](https://phaser.io) + [Capacitor](https://capacitorjs.com) e monetizado com **Google AdMob**.
 
+> 🫧 Este repositório também tem o **Bolinhas Zen**, um quebra-cabeça relaxante de separar cores: veja [`bolinhas-zen/`](bolinhas-zen/README.md).
+
 Toque para pular, toque de novo no ar para o pulo duplo, solte cedo para um pulo baixo. Desvie de espinhos e serras, pouse nos blocos, junte moedas e compre novos personagens na loja.
 
 ## Monetização (onde os anúncios aparecem)

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bolinhas Zen</string>
+    <string name="title_activity_main">Bolinhas Zen</string>
+    <string name="package_name">com.lucaspx.bolinhaszen</string>
+    <string name="custom_url_scheme">com.lucaspx.bolinhaszen</string>
+</resources>
