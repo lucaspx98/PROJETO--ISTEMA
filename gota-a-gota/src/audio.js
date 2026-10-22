@@ -94,6 +94,24 @@ export const Sfx = {
   },
   jarFull: (k = 0) =>
     [0, 2, 4, 5].forEach((s, i) => tone(PENTA[(k % 3) + s], 0.6, { vol: 0.09, delay: i * 0.07 })),
+  /** Pote completo no arcade: a nota sobe a cada combo, como uma escada musical. */
+  combo: (n) => {
+    const k = Math.min(n - 1, PENTA.length - 1);
+    bloop(300, 0.16);
+    tone(PENTA[k], 0.35, { type: 'triangle', vol: 0.09, delay: 0.03 });
+    tone(PENTA[k] * 2, 0.25, { vol: 0.03, delay: 0.03 });
+    if (n >= 3) tone(PENTA[Math.min(k + 2, PENTA.length - 1)], 0.3, { type: 'triangle', vol: 0.06, delay: 0.1 });
+  },
+  levelUp: () => [0, 2, 4, 7, 9].forEach((s, i) => tone(PENTA[s], 0.3, { type: 'square', vol: 0.04, delay: i * 0.06 })),
+  fever: () => {
+    for (let i = 0; i < 10; i++) tone(PENTA[i], 0.25, { type: 'square', vol: 0.035, delay: i * 0.04 });
+    tone(130.8, 1.2, { type: 'sawtooth', vol: 0.05, slideTo: 261.6 });
+  },
+  hurt: () => {
+    tone(220, 0.35, { type: 'sawtooth', vol: 0.08, slideTo: 90 });
+    click(0.2, 600);
+  },
+  record: () => [0, 4, 7, 9, 9].forEach((s, i) => tone(PENTA[s] * (i === 4 ? 2 : 1), 0.35, { type: 'triangle', vol: 0.08, delay: i * 0.08 })),
   nope: () => tone(160, 0.22, { type: 'triangle', vol: 0.14, slideTo: 110 }),
   win: () => {
     [0, 2, 4, 5, 7, 9].forEach((s, i) => tone(PENTA[s], 0.9, { type: 'triangle', vol: 0.08, delay: i * 0.09 }));

@@ -3,6 +3,8 @@ const KEY = 'gotaagota.save.v1';
 
 const DEFAULTS = {
   level: 1,
+  best: 0,
+  runs: 0,
   coins: 0,
   ownedThemes: ['cidade'],
   theme: 'cidade',

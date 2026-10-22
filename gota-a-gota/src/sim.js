@@ -107,7 +107,13 @@ export function generateLevel(level) {
 }
 
 export class Sim {
+  /**
+   * `def.endless`: modo arcade, sem fim de nível (a cena troca os pedidos dos potes).
+   * `def.creep`: velocidade (px/s) com que gotas paradas escorregam sozinhas pela névoa.
+   */
   constructor(def) {
+    this.endless = !!def.endless;
+    this.creep = def.creep || 0;
     this.fog = new Float32Array(COLS * ROWS).fill(1);
     this.wall = new Uint8Array(COLS * ROWS);
     def.walls.forEach(({ c0, len, row }) => {
@@ -124,9 +130,9 @@ export class Sim {
     this.state = 'playing';
   }
 
-  addDrop(x, y, pig, parts) {
+  addDrop(x, y, pig, parts, extra = {}) {
     const units = pig[0] + pig[1] + pig[2];
-    const d = { id: this.nextId++, x, y, pig, units, r: dropRadius(units), moving: false, speed: 0, dir: x < 270 ? 1 : -1, parts };
+    const d = { id: this.nextId++, x, y, pig, units, r: dropRadius(units), moving: false, speed: 0, dir: x < 270 ? 1 : -1, parts, ...extra };
     this.drops.push(d);
     return d;
   }
@@ -207,6 +213,15 @@ export class Sim {
           d.moving = true;
           d.speed = 40;
           this.events.push({ type: 'release', drop: d });
+        } else if (this.creep) {
+          // Gota pesada escorrega devagarinho mesmo na névoa (mas não atravessa madeira)
+          const c = Math.floor(d.x / CELL);
+          const r = Math.floor((d.y - GLASS_TOP) / CELL);
+          if (r >= ROWS - 1) this.reachBottom(d);
+          else if (!this.isWall(c, r + 1)) {
+            d.y += this.creep * dt * (0.8 + 0.2 * d.units);
+            d.creeping = true;
+          }
         }
         continue;
       }
@@ -274,6 +289,8 @@ export class Sim {
         keep.r = dropRadius(keep.units);
         keep.parts = keep.parts.concat(eat.parts);
         keep.moving = keep.moving || eat.moving;
+        keep.wild = keep.wild || eat.wild;
+        keep.golden = keep.golden || eat.golden;
         keep.speed = Math.max(keep.speed, eat.speed * 0.6);
         eat.gone = true;
         this.events.push({ type: 'merge', drop: keep, eaten: eat });
@@ -289,7 +306,7 @@ export class Sim {
   reachBottom(d) {
     d.gone = true;
     const jar = this.jarAt(d.x);
-    if (jar && jar.filled < jar.units && sameColor(d.pig, jar.pig)) {
+    if (jar && jar.filled < jar.units && (d.wild || sameColor(d.pig, jar.pig))) {
       const room = jar.units - jar.filled;
       const used = Math.min(room, d.units);
       jar.filled += used;
@@ -314,7 +331,7 @@ export class Sim {
   }
 
   checkEnd() {
-    if (!this.jars.length) return; // vidro de enfeite do menu: não tem fim
+    if (!this.jars.length || this.endless) return; // menu e modo arcade: não tem fim de nível
     if (this.jars.every((j) => j.filled >= j.units)) {
       this.state = 'won';
       this.events.push({ type: 'win' });

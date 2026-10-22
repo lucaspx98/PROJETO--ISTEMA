@@ -31,8 +31,10 @@ export class MenuScene extends Phaser.Scene {
     this.tweens.add({ targets: [title, sub], y: '+=6', duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     text(this, GAME_WIDTH / 2, 352, 'passe o dedo no vidro', 22, '#ffffff').setDepth(20).setAlpha(0.85);
 
-    button(this, GAME_WIDTH / 2, 500, 340, 96, `▶  NÍVEL ${Save.get('level')}`, 0x06d6a0, () => this.play(), 40);
-    button(this, GAME_WIDTH / 2, 615, 340, 70, 'Vistas da janela', 0x5a4fcf, () => this.scene.start('Shop'), 26);
+    button(this, GAME_WIDTH / 2, 470, 360, 104, '▶  JOGAR', 0x06d6a0, () => this.play('Arcade'), 46);
+    if (Save.get('best') > 0) text(this, GAME_WIDTH / 2, 545, `Recorde: ${Save.get('best')}`, 24, '#ffd23f').setDepth(20);
+    button(this, GAME_WIDTH / 2 - 88, 625, 166, 64, `Fases (${Save.get('level')})`, 0x3a86ff, () => this.play('Game'), 22);
+    button(this, GAME_WIDTH / 2 + 88, 625, 166, 64, 'Vistas', 0x5a4fcf, () => this.scene.start('Shop'), 22);
     const opts = [
       ['muted', 'Sons', () => Save.toggle('muted')],
       ['musicOff', 'Música', () => Music.toggle()],
@@ -67,7 +69,7 @@ export class MenuScene extends Phaser.Scene {
     };
     this.input.on('pointerup', stop);
     this.events.once('shutdown', stop);
-    this.input.keyboard?.once('keydown-SPACE', () => this.play());
+    this.input.keyboard?.once('keydown-SPACE', () => this.play('Arcade'));
   }
 
   spawnDrop() {
@@ -98,8 +100,8 @@ export class MenuScene extends Phaser.Scene {
     this.sim.events.length = 0;
   }
 
-  play() {
+  play(mode) {
     Sfx.unlock();
-    this.scene.start('Game');
+    this.scene.start(mode);
   }
 }

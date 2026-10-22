@@ -1,4 +1,5 @@
 // Desenha uma simulação (sim.js): paisagem, névoa, prateleiras, moldura e gotas.
+import Phaser from 'phaser';
 import { CELL, COLS, GLASS_BOTTOM, GLASS_TOP, ROWS } from './sim.js';
 import { pigmentToRgb } from './colors.js';
 import { DROP_TEX_R, viewKey } from './textures.js';
@@ -30,6 +31,7 @@ export class Glass {
 
     this.drawWalls();
     this.dropSprites = new Map();
+    this.t = 0;
     this.update(0);
   }
 
@@ -98,22 +100,31 @@ export class Glass {
     ctx.filter = 'none';
     this.fogTex.refresh();
 
+    this.t += dt;
     const alive = new Set();
     for (const d of this.sim.drops) {
       alive.add(d.id);
       const s = this.dropSprite(d);
-      if (s.units !== d.units) {
+      if (d.golden) {
+        // Dourada: brilho pulsando
+        const k = 0.5 + 0.5 * Math.sin(this.t * 8 + d.id);
+        s.body.setTint(Phaser.Display.Color.GetColor(255, 200 + 40 * k, 40 + 80 * k));
+      } else if (d.wild) {
+        // Coringa: arco-íris girando
+        s.body.setTint(Phaser.Display.Color.HSVToRGB((this.t * 0.6 + d.id * 0.13) % 1, 0.65, 1).color);
+      } else if (s.units !== d.units) {
         s.units = d.units;
         s.body.setTint(pigmentToRgb(d.pig));
       }
       const base = d.r / DROP_TEX_R;
       // Esticada quando escorre, redondinha parada
-      const stretch = d.moving ? Math.min(d.speed / 900, 0.3) : 0;
+      const stretch = d.moving ? Math.min(d.speed / 900, 0.3) : d.creeping ? 0.08 : 0;
+      const pulse = d.golden ? 1 + 0.08 * Math.sin(this.t * 10) : 1;
       s.target = base;
       s.cur = s.cur === undefined ? 0 : s.cur + (base - s.cur) * Math.min(1, dt * 12);
       [s.body, s.shine].forEach((o) => {
         o.setPosition(d.x, d.y - d.r * stretch * 0.5);
-        o.setScale(s.cur * (1 - stretch * 0.4), s.cur * (1 + stretch));
+        o.setScale(s.cur * pulse * (1 - stretch * 0.4), s.cur * pulse * (1 + stretch));
       });
     }
     for (const [id, s] of this.dropSprites) {

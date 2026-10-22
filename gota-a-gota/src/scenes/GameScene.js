@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { ADS, BANNER_SPACE, GAME_HEIGHT, GAME_WIDTH, WIPE_RADIUS } from '../config.js';
+import { ADS, GAME_HEIGHT, GAME_WIDTH, WIPE_RADIUS } from '../config.js';
 import { Save } from '../storage.js';
 import { Sfx, WipeSound } from '../audio.js';
 import { Haptic } from '../haptics.js';
@@ -9,11 +9,7 @@ import { GLASS_BOTTOM, GLASS_TOP, Sim, generateLevel } from '../sim.js';
 import { pigmentToRgb } from '../colors.js';
 import { Glass } from '../glass.js';
 import { button, coinCounter, text, toast } from '../ui.js';
-
-const SILL_H = 18;
-const JAR_TOP = GLASS_BOTTOM + SILL_H + 2;
-const JAR_H = GAME_HEIGHT - BANNER_SPACE - JAR_TOP - 4;
-const PRIMARY = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map(pigmentToRgb);
+import { JAR_H, JAR_TOP, JarRow, PRIMARY } from '../jars.js';
 
 const TIPS = {
   1: 'Passe o dedo no vidro para abrir um\ncaminho da gota até o pote',
@@ -42,8 +38,7 @@ export class GameScene extends Phaser.Scene {
     this.wipedSinceTick = 0;
 
     this.drawHud();
-    this.drawSill();
-    this.drawJars();
+    this.jars = new JarRow(this, this.sim);
 
     this.particles = this.add.particles(0, 0, 'dot', {
       speed: { min: 60, max: 220 },
@@ -83,51 +78,6 @@ export class GameScene extends Phaser.Scene {
     if (this.sim.regrow > 0) {
       this.freezeBtn = button(this, GAME_WIDTH - 100, 86, 150, 34, '▶ Parar névoa', 0x4cc9f0, () => this.freezeFog(), 17);
     }
-  }
-
-  drawSill() {
-    const g = this.add.graphics().setDepth(8);
-    g.fillStyle(0xc9b79f, 1);
-    g.fillRect(0, GLASS_BOTTOM, GAME_WIDTH, SILL_H);
-    g.fillStyle(0xf1e6d6, 1);
-    g.fillRect(0, GLASS_BOTTOM, GAME_WIDTH, 7);
-    // Aberturas da moldura em cima de cada pote
-    this.sim.jars.forEach((j) => {
-      g.fillStyle(0x3b3024, 1);
-      g.fillRoundedRect(j.x - j.w / 2 + 6, GLASS_BOTTOM, j.w - 12, SILL_H - 4, 4);
-    });
-    this.add.rectangle(0, GLASS_BOTTOM + SILL_H, GAME_WIDTH, GAME_HEIGHT - GLASS_BOTTOM - SILL_H, 0x141b3a, 1).setOrigin(0).setDepth(7);
-  }
-
-  drawJars() {
-    this.jarViews = this.sim.jars.map((j) => {
-      const c = this.add.container(j.x, JAR_TOP).setDepth(9);
-      const w = j.w - 10;
-      const color = pigmentToRgb(j.pig);
-      const ghost = this.add.graphics();
-      ghost.fillStyle(color, 0.22);
-      ghost.fillRoundedRect(-w / 2, 0, w, JAR_H, 12);
-      const liquid = this.add.graphics();
-      const glass = this.add.graphics();
-      glass.lineStyle(3, 0xffffff, 0.7);
-      glass.strokeRoundedRect(-w / 2, 0, w, JAR_H, 12);
-      glass.fillStyle(0xffffff, 0.25);
-      glass.fillRoundedRect(-w / 2 + 6, 6, 6, JAR_H - 16, 3);
-      // Receita: bolinhas das cores primárias que formam a cor do pote
-      const dots = [];
-      j.pig.forEach((n, k) => {
-        for (let i = 0; i < n; i++) dots.push(PRIMARY[k]);
-      });
-      const recipe = this.add.container(0, JAR_H / 2);
-      dots.forEach((col, i) => {
-        const dx = (i - (dots.length - 1) / 2) * 24;
-        const dot = this.add.circle(dx, 0, 9, col).setStrokeStyle(2, 0xffffff, 0.9);
-        if (i > 0 && dots.length > 1) recipe.add(text(this, dx - 12, 0, '+', 16));
-        recipe.add(dot);
-      });
-      c.add([ghost, liquid, glass, recipe]);
-      return { c, liquid, recipe, w, color, shown: 0 };
-    });
   }
 
   /** Mão fantasma mostrando o gesto no primeiro nível. */
@@ -237,42 +187,20 @@ export class GameScene extends Phaser.Scene {
 
   /** Gota sai do vidro e cai no pote: o líquido sobe. */
   dropIntoJar(d, jar) {
-    const view = this.jarViews[this.sim.jars.indexOf(jar)];
-    const body = this.add.image(d.x, GLASS_BOTTOM, 'drop-body').setTint(pigmentToRgb(d.pig)).setScale(d.r / 32).setDepth(10);
-    this.tweens.add({
-      targets: body,
-      x: jar.x,
-      y: JAR_TOP + JAR_H * 0.6,
-      scaleY: (d.r / 32) * 1.3,
-      duration: 220,
-      ease: 'Quad.in',
-      onComplete: () => {
-        body.destroy();
-        Sfx.fill(Math.round(jar.filled * 2));
-        Haptic.medium();
-        this.particles.setParticleTint(pigmentToRgb(d.pig));
-        this.particles.explode(8, jar.x, JAR_TOP + JAR_H * (1 - jar.filled / jar.units));
-        view.recipe.setVisible(false);
-        this.tweens.add({ targets: view, shown: jar.filled / jar.units, duration: 450, ease: 'Sine.out', onUpdate: () => this.drawLiquid(view) });
-        if (jar.filled >= jar.units) this.time.delayedCall(350, () => this.jarFull(jar, view));
-      },
+    this.jars.dropInto(d, jar, pigmentToRgb(d.pig), () => {
+      Sfx.fill(Math.round(jar.filled * 2));
+      Haptic.medium();
+      this.particles.setParticleTint(pigmentToRgb(d.pig));
+      this.particles.explode(8, jar.x, JAR_TOP + JAR_H * (1 - jar.filled / jar.units));
+      if (jar.filled >= jar.units) this.time.delayedCall(350, () => this.jarFull(jar));
     });
   }
 
-  drawLiquid(view) {
-    const h = (JAR_H - 6) * view.shown;
-    view.liquid.clear();
-    view.liquid.fillStyle(view.color, 1);
-    view.liquid.fillRoundedRect(-view.w / 2 + 3, JAR_H - 3 - h, view.w - 6, h, Math.min(10, h / 2));
-    view.liquid.fillStyle(0xffffff, 0.3);
-    view.liquid.fillRect(-view.w / 2 + 8, JAR_H - 3 - h + 2, view.w - 16, Math.min(3, h));
-  }
-
-  jarFull(jar, view) {
+  jarFull(jar) {
     Sfx.jarFull(this.sim.jars.indexOf(jar));
     Haptic.medium();
     this.sparkles.explode(10, jar.x, JAR_TOP + JAR_H / 2);
-    this.tweens.add({ targets: view.c, scale: 1.12, duration: 120, yoyo: true, ease: 'Quad.out' });
+    this.jars.bounce(jar);
   }
 
   splash(d, jar) {
@@ -282,8 +210,7 @@ export class GameScene extends Phaser.Scene {
     this.particles.explode(14, d.x, GLASS_BOTTOM);
     if (jar) {
       Sfx.nope();
-      const view = this.jarViews[this.sim.jars.indexOf(jar)];
-      this.tweens.add({ targets: view.c, x: jar.x + 6, duration: 45, yoyo: true, repeat: 3, onComplete: () => (view.c.x = jar.x) });
+      this.jars.shake(jar);
       toast(this, jar.filled >= jar.units ? 'Esse pote já está cheio!' : 'Cor errada para esse pote!', GLASS_BOTTOM - 60);
     } else {
       toast(this, 'A gota caiu fora do pote!', GLASS_BOTTOM - 60);

@@ -5,7 +5,22 @@ para guiar gotas coloridas até os potes, misturando as cores pelo caminho.
 Feito com [Phaser 3](https://phaser.io) + [Capacitor](https://capacitorjs.com) e monetizado com **Google AdMob**
 (mesma base do Corre Corre, na raiz do repositório).
 
-## Como joga
+## Modo principal: Chuva sem fim (arcade)
+
+Partida rápida e sem pausa, feita para dar vontade de jogar "só mais uma":
+
+- Gotas novas aparecem o tempo todo e a névoa volta rápido: cada gota pede uma passada de dedo.
+- Gota esquecida escorrega sozinha pela névoa; 3 gotas perdidas (fora do pote ou na cor errada) = fim.
+- Os potes trocam de pedido assim que enchem, e muitas vezes pedem a cor de uma gota que já está no vidro.
+- **Combo**: potes seguidos em até 5 s somam combo e multiplicador (até x8), com a nota musical subindo a cada acerto.
+- **FEBRE** a cada 10 de combo: 8 s com dedo mais largo, qualquer gota vale em qualquer pote e pontos em dobro.
+- **Gotas douradas** (+5 moedas), barra de nível sempre enchendo, vida extra a cada 3 níveis e 4º pote no nível 5.
+- "NOVO RECORDE!" com confete no meio da partida, e no fim "faltaram só X pontos" quando passa perto.
+- Ao perder: **Continuar (+3 vidas)** com anúncio recompensado, uma vez por partida.
+
+O modo **Fases** (abaixo) continua no menu como quebra-cabeça mais calmo.
+
+## Como joga (fases)
 
 - O vidro da janela está embaçado e as gotas estão grudadas nele.
 - Passe o dedo no vidro: a névoa sai e as gotas **escorrem só pelo vidro limpo**, descendo pelo caminho que você desenhou.
@@ -36,7 +51,7 @@ um "robô" para jogar os 120 primeiros níveis.
 |---|---|
 | **Banner** | Rodapé de todas as telas (o jogo deixa essa faixa livre) |
 | **Intersticial** | Ao avançar ou recomeçar após perder, a partir do nível 4, a cada 3 níveis e no máximo 1 a cada 90 s |
-| **Recompensado** | "Continuar" após perder (devolve as gotas perdidas), "Parar névoa", "Dobrar moedas" e "+50 moedas" na loja |
+| **Recompensado** | Arcade: "Continuar (+3 vidas)". Fases: "Continuar" (devolve as gotas perdidas), "Parar névoa", "Dobrar moedas". Loja: "+50 moedas" |
 
 Tudo configurável em `src/config.js`.
 
@@ -84,7 +99,8 @@ src/
   haptics.js       vibração
   ads.js           AdMob (Android) + simulador (navegador)
   storage.js       progresso salvo no aparelho
-  scenes/          Menu, Game, Shop
+  jars.js          parapeito e potes
+  scenes/          Menu, Arcade (Chuva sem fim), Game (fases), Shop
 scripts/test-sim.js   testes da física e dos níveis
 android/          projeto Android nativo (Capacitor)
 ```

@@ -4,6 +4,7 @@ import { Ads } from './ads.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
 import { GameScene } from './scenes/GameScene.js';
+import { ArcadeScene } from './scenes/ArcadeScene.js';
 import { ShopScene } from './scenes/ShopScene.js';
 
 Ads.init();
@@ -17,7 +18,7 @@ const game = new Phaser.Game({
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   input: { activePointers: 1 },
   render: { antialias: true },
-  scene: [BootScene, MenuScene, GameScene, ShopScene],
+  scene: [BootScene, MenuScene, ArcadeScene, GameScene, ShopScene],
 });
 
 // Acesso pelo console do navegador durante o desenvolvimento (testes automáticos usam isso).
