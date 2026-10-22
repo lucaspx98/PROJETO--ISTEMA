@@ -1,0 +1,26 @@
+{
+  "name": "gota-a-gota",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Gota a Gota — quebra-cabeça relaxante de desembaçar o vidro e guiar gotas coloridas, para Android (Phaser + Capacitor + AdMob)",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview --host",
+    "test": "node scripts/test-sim.js",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^8.2.1",
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/haptics": "^8.0.2",
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "vite": "^8.3.3"
+  }
+}

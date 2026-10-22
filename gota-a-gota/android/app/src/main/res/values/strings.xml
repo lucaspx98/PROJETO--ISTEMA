@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Gota a Gota</string>
+    <string name="title_activity_main">Gota a Gota</string>
+    <string name="package_name">com.lucaspx.gotaagota</string>
+    <string name="custom_url_scheme">com.lucaspx.gotaagota</string>
+</resources>

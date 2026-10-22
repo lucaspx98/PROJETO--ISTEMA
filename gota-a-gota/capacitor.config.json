@@ -1,0 +1,11 @@
+{
+  "appId": "com.lucaspx.gotaagota",
+  "appName": "Gota a Gota",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#141b3a"
+  },
+  "plugins": {
+    "AdMob": {}
+  }
+}
