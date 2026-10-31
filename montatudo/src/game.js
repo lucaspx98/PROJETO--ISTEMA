@@ -392,7 +392,8 @@ export class Play {
     if (this.done || this.held || ev.target !== this.e.canvas) return;
     const x = ev.clientX;
     const y = ev.clientY;
-    const f = this.nearestFastener(x, y, ['hole', 'in']);
+    // Parafuso/prego já colocado tem prioridade sobre furo vazio ao lado (o dedo começa o giro fora do centro)
+    const f = this.nearestFastener(x, y, ['in']) ?? this.nearestFastener(x, y, ['hole']);
     const part = f ? null : this.hitPartAt(x, y);
     const loose = part && part.placed && !part.seated ? part : null;
     if (this.useTool(this.hooks.getTool(), f, loose, part, x, y)) {
