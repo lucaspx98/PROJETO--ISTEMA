@@ -148,7 +148,7 @@ async function leaveDone(next) {
 
 // ---------- bandeja de peças (arrastar para cima para pegar) ----------
 
-function renderTray(parts) {
+function renderTray(parts, current) {
   const tray = $('tray');
   tray.innerHTML = '';
   if (!parts.length) {
@@ -157,7 +157,7 @@ function renderTray(parts) {
   }
   parts.forEach((p) => {
     const el = document.createElement('div');
-    el.className = 'part' + (play && play.missing(p).length ? ' blocked' : '');
+    el.className = 'part' + (current.missing(p).length ? ' blocked' : '');
     el.dataset.id = p.def.id;
     el.innerHTML = `<img src="${p.thumb}" alt=""><span>${p.def.name}</span>`;
     el.addEventListener('pointerdown', (ev) => trayDown(ev, p.def.id, el));

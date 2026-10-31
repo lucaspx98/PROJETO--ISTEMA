@@ -113,7 +113,7 @@ export class Play {
   }
 
   refresh() {
-    this.hooks.onTray(this.parts.filter((p) => !p.placed));
+    this.hooks.onTray(this.parts.filter((p) => !p.placed), this);
     this.hooks.onProgress(this.progress, this.total);
   }
 
