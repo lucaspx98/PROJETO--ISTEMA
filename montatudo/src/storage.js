@@ -4,6 +4,7 @@ const KEY = 'montatudo.save.v1';
 const DEFAULTS = {
   coins: 40,
   stars: {}, // id da fase -> melhor número de estrelas (1 a 3)
+  tools: {}, // id da ferramenta -> nível comprado na Oficina
   muted: false,
   musicOff: false,
 };

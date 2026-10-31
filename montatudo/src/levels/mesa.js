@@ -27,6 +27,7 @@ export const mesaParts = [
     id: 'tampo',
     name: 'Tampo',
     after: ['perna-fe', 'perna-fd', 'perna-te', 'perna-td', 'travessa'],
+    press: { tool: 'martelo', hits: 4 }, // encaixa nas cavilhas
     build: () => box(1.2, 0.03, 0.6, M.oak, 0, H - 0.015, 0, 0.006),
   },
   {
@@ -51,7 +52,9 @@ export const mesa = {
   screwSize: 1,
   shadow: 1.6,
   parts: mesaParts,
-  screws: [-1, 1].flatMap((sx) =>
-    [-1, 1].map((sz) => ({ pos: [sx * LX, H, sz * LZ], normal: [0, 1, 0], after: 'tampo' })),
-  ),
+  screws: [
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ pos: [sx * LX, H, sz * LZ], normal: [0, 1, 0], after: 'tampo' }))),
+    // puxador da gaveta
+    ...[-1, 1].map((sx) => ({ pos: [0.3 + sx * 0.08, H - 0.0725, 0.255], normal: [0, 0, 1], after: 'gaveta' })),
+  ],
 };

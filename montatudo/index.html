@@ -19,6 +19,7 @@
       </div>
       <div class="menu-bottom">
         <button id="btn-play" class="btn big green">▶ Jogar</button>
+        <button id="btn-shop" class="btn orange">🧰 Oficina</button>
         <div class="row">
           <button id="btn-sfx" class="btn small"></button>
           <button id="btn-music" class="btn small"></button>
@@ -35,6 +36,15 @@
       <div id="level-list"></div>
     </div>
 
+    <div id="shop" class="screen hidden">
+      <div class="topbar">
+        <button id="btn-shop-back" class="icon">←</button>
+        <b class="title">🧰 Oficina</b>
+        <span class="coins">🪙 <b class="coin-val">0</b></span>
+      </div>
+      <div id="shop-list"></div>
+    </div>
+
     <div id="hud" class="hidden">
       <div class="topbar">
         <button id="btn-quit" class="icon">✕</button>
@@ -42,8 +52,11 @@
         <span id="lvl-time" class="pill">0:00</span>
       </div>
       <button id="btn-hint" class="btn hint"></button>
+      <div id="toolbar"></div>
       <div id="tray"></div>
     </div>
+    <div id="ring" class="hidden"></div>
+    <img id="drag-float" class="hidden" alt="" />
 
     <div id="done" class="modal hidden">
       <div class="card">

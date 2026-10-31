@@ -28,6 +28,7 @@ export const cadeiraParts = [
     id: 'base',
     name: 'Base estrela',
     after: ['rodinhas'],
+    press: { tool: 'martelo', hits: 4 }, // rodinhas entram sob pressão
     build: () =>
       group(
         cyl(0.045, 0.055, 0.07, M.chrome, 0, 0.1, 0),
@@ -38,6 +39,7 @@ export const cadeiraParts = [
     id: 'pistao',
     name: 'Pistão a gás',
     after: ['base'],
+    press: { tool: 'martelo', hits: 3 },
     build: () =>
       group(cyl(0.028, 0.028, 0.18, M.plasticBlack, 0, 0.215, 0), cyl(0.016, 0.016, 0.1, M.chrome, 0, 0.35, 0)),
   },
@@ -89,6 +91,9 @@ export const cadeira = {
   shadow: 1.2,
   parts: cadeiraParts,
   screws: [
+    // mecanismo preso por baixo do assento: 2 parafusos visíveis na frente
+    { pos: [-0.07, 0.415, 0.12], normal: [0, 0, 1], after: 'mecanismo' },
+    { pos: [0.07, 0.415, 0.12], normal: [0, 0, 1], after: 'mecanismo' },
     { pos: [-0.285, 0.55, -0.02], normal: [-1, 0, 0], after: 'braco-e' },
     { pos: [-0.285, 0.62, -0.02], normal: [-1, 0, 0], after: 'braco-e' },
     { pos: [0.285, 0.55, -0.02], normal: [1, 0, 0], after: 'braco-d' },

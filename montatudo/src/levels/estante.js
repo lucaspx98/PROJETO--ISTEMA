@@ -45,6 +45,7 @@ export const estanteParts = [
     id: `prateleira-${k + 1}`,
     name: 'Prateleira',
     after: ['fundo'],
+    press: { tool: 'martelo', hits: 3 }, // apoia nos pinos
     build: () => box(IN, T, D - 0.02, M.walnut, 0, y, 0.008, 0.002),
   })),
   {
@@ -70,5 +71,7 @@ export const estante = {
     { pos: [W / 2, 0.07, 0.08], normal: [1, 0, 0], after: 'base' },
     { pos: [-W / 2, H - T / 2, 0.08], normal: [-1, 0, 0], after: 'topo' },
     { pos: [W / 2, H - T / 2, 0.08], normal: [1, 0, 0], after: 'topo' },
+    // pregos prendendo o fundo pelo topo e pela base
+    ...[-0.25, 0, 0.25].map((x) => ({ type: 'nail', pos: [x, H, -D / 2 + 0.006], normal: [0, 1, 0], after: 'fundo' })),
   ],
 };

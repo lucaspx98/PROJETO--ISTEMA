@@ -68,6 +68,13 @@ export const Sfx = {
     for (let i = 0; i < 7; i++) noise(0.03, 0.25, 3500 + i * 150, 6, i * 0.075);
     tone(900, 0.06, 'square', 0.03, null, 0.55);
   },
+  /** Clique da catraca a cada quarto de volta (mais agudo apertando, mais grave afrouxando). */
+  ratchet: (tight) => noise(0.025, 0.3, tight ? 4200 : 2600, 8),
+  hammer: () => {
+    tone(95, 0.16, 'sine', 0.45, 55);
+    noise(0.07, 0.55, 1300, 1.5);
+  },
+  drill: () => tone(180 + Math.random() * 30, 0.13, 'sawtooth', 0.035, 240),
   coin: () => {
     tone(988, 0.07, 'square', 0.04);
     tone(1319, 0.14, 'square', 0.04, null, 0.06);

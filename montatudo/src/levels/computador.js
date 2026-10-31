@@ -8,6 +8,8 @@ const FACE = BOARD_Z + 0.0015; // superfície da placa
 const MB = { x: 0.093, y: 0.2875, w: 0.244, h: 0.305 };
 const SOCKET = { x: 0.1, y: 0.355 };
 
+const RAM_PRESS = { tool: 'mao', hits: 2, dir: [0, 0, -1], dist: 0.012 };
+
 function ramStick(x) {
   return group(
     box(0.002, 0.133, 0.03, M.pcbGreen, x, SOCKET.y, FACE + 0.017),
@@ -56,13 +58,13 @@ export const computadorParts = [
           box(0.007, 0.135, 0.008, M.plasticDark, 0.155, SOCKET.y, FACE + 0.004),
           box(0.007, 0.135, 0.008, M.plasticDark, 0.168, SOCKET.y, FACE + 0.004),
           box(0.09, 0.008, 0.011, M.plasticDark, 0.125, 0.255, FACE + 0.0055),
-          box(0.09, 0.008, 0.011, M.plasticDark, 0.125, 0.18, FACE + 0.0055),
+          box(0.09, 0.008, 0.011, M.plasticDark, 0.125, 0.155, FACE + 0.0055),
           box(0.075, 0.022, 0.016, M.metalGray, 0.095, 0.415, FACE + 0.008, 0.003),
           box(0.022, 0.07, 0.016, M.metalGray, 0.045, 0.36, FACE + 0.008, 0.003),
           box(0.05, 0.05, 0.009, M.metalGray, 0.03, 0.17, FACE + 0.0045, 0.003),
           box(0.032, 0.006, 0.0015, M.rgbCyan, 0.03, 0.17, FACE + 0.0095),
           box(0.026, 0.13, 0.022, M.plasticBlack, 0.2, 0.36, FACE + 0.011, 0.003),
-          box(0.035, 0.012, 0.004, M.plasticDark, 0.07, 0.215, FACE + 0.002),
+          box(0.035, 0.012, 0.004, M.plasticDark, 0.075, 0.185, FACE + 0.002),
           box(0.006, 0.05, 0.009, M.plasticDark, 0.205, 0.2, FACE + 0.0045),
         ),
       ),
@@ -96,23 +98,25 @@ export const computadorParts = [
       );
     },
   },
-  { id: 'ram-1', name: 'Memória RAM', after: ['placa-mae'], build: () => ramStick(0.155) },
-  { id: 'ram-2', name: 'Memória RAM', after: ['placa-mae'], build: () => ramStick(0.168) },
+  // Memória entra no slot apertando com o dedo até a trava fechar
+  { id: 'ram-1', name: 'Memória RAM', after: ['placa-mae'], press: RAM_PRESS, build: () => ramStick(0.155) },
+  { id: 'ram-2', name: 'Memória RAM', after: ['placa-mae'], press: RAM_PRESS, build: () => ramStick(0.168) },
   {
     id: 'ssd',
     name: 'SSD M.2',
     after: ['placa-mae'],
     build: () =>
       group(
-        box(0.08, 0.022, 0.0015, M.pcbBlack, 0.07, 0.215, FACE + 0.005),
-        box(0.022, 0.016, 0.0015, M.plasticBlack, 0.06, 0.215, FACE + 0.0065),
-        box(0.022, 0.016, 0.0015, M.plasticBlack, 0.085, 0.215, FACE + 0.0065),
+        box(0.08, 0.022, 0.0015, M.pcbBlack, 0.1, 0.185, FACE + 0.005),
+        box(0.022, 0.016, 0.0015, M.plasticBlack, 0.09, 0.185, FACE + 0.0065),
+        box(0.022, 0.016, 0.0015, M.plasticBlack, 0.115, 0.185, FACE + 0.0065),
       ),
   },
   {
     id: 'placa-video',
     name: 'Placa de vídeo',
     after: ['placa-mae', 'ssd'],
+    press: { tool: 'mao', hits: 2, dir: [0, 0, -1], dist: 0.01 },
     build: () => {
       const y = 0.235;
       const z = FACE + 0.062;
@@ -185,6 +189,7 @@ export const computador = {
   cam: { dist: 0.95, min: 0.45, max: 1.6 },
   snap: 0.035,
   screwSize: 0.32,
+  fragile: true, // martelo aqui é erro
   shadow: 0.6,
   parts: computadorParts,
   screws: [
@@ -199,6 +204,8 @@ export const computador = {
       [0.205, 0.025],
       [-0.205, 0.435],
       [0.205, 0.435],
-    ].map(([x, y]) => ({ pos: [x, y, 0.1095], normal: [0, 0, 1], after: 'tampa-vidro' })),
+    ].map(([x, y]) => ({ thumb: true, pos: [x, y, 0.1095], normal: [0, 0, 1], after: 'tampa-vidro' })),
+    // SSD M.2 preso por um parafusinho na ponta
+    { pos: [0.142, 0.185, FACE + 0.006], normal: [0, 0, 1], after: 'ssd' },
   ],
 };

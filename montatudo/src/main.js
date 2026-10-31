@@ -1,4 +1,4 @@
-// Controlador do app: telas (menu, fases, jogo, vitória), bandeja de peças e anúncios.
+// Controlador do app: telas (menu, fases, oficina, jogo, vitória), bandeja, ferramentas e anúncios.
 import { Engine } from './engine.js';
 import { Play, showcase } from './game.js';
 import { LEVELS } from './levels/index.js';
@@ -7,6 +7,7 @@ import { Sfx } from './audio.js';
 import { Music } from './music.js';
 import { Ads } from './ads.js';
 import { HINT_PRICE } from './config.js';
+import { TOOLS, nextPrice, toolLevel, upgradeTool } from './tools.js';
 
 const $ = (id) => document.getElementById(id);
 const engine = new Engine($('c'));
@@ -14,13 +15,15 @@ let play = null;
 let levelIndex = 0;
 let stopShowcase = null;
 let lastReward = 0;
+let tool = 'mao';
+let ring = null; // { pos, progress, until }
 
 Ads.init();
 
 // ---------- utilidades de interface ----------
 
 function show(id) {
-  ['menu', 'levels', 'hud', 'done'].forEach((s) => $(s).classList.toggle('hidden', s !== id && !(id === 'done' && s === 'hud')));
+  ['menu', 'levels', 'shop', 'hud', 'done'].forEach((s) => $(s).classList.toggle('hidden', s !== id && !(id === 'done' && s === 'hud')));
 }
 
 function updateCoins() {
@@ -114,7 +117,10 @@ function startLevel(i) {
       el.classList.add('glow');
     },
     onComplete: complete,
+    getTool: () => tool,
+    onRing: (r) => (ring = r ? { ...r, until: r.hold ? performance.now() + r.hold : 0 } : null),
   });
+  selectTool('mao');
   toast('Arraste as peças até o contorno azul');
 }
 
@@ -127,7 +133,7 @@ function quitLevel() {
 function complete({ stars, time, mistakes }) {
   const level = LEVELS[levelIndex];
   Save.setStars(level.id, stars);
-  lastReward = 40 + stars * 20;
+  lastReward = 60 + stars * 30;
   Save.addCoins(lastReward);
   Sfx.coin();
   updateCoins();
@@ -148,61 +154,156 @@ async function leaveDone(next) {
 
 // ---------- bandeja de peças (arrastar para cima para pegar) ----------
 
-function renderTray(parts, current) {
+function renderTray(items, current) {
   const tray = $('tray');
   tray.innerHTML = '';
-  if (!parts.length) {
-    tray.innerHTML = `<div class="tray-empty">${
-      current.level.screws.length ? 'Todas as peças no lugar! Toque nos parafusos laranja 🔩' : 'Tudo montado! 🎉'
-    }</div>`;
+  if (!items.length) {
+    const pending = current.fasteners.some((f) => f.state !== 'done') || current.parts.some((p) => !p.seated);
+    tray.innerHTML = `<div class="tray-empty">${pending ? 'Tudo na bandeja já foi usado. Termine de prender com as ferramentas 🔧' : 'Tudo montado! 🎉'}</div>`;
     return;
   }
-  parts.forEach((p) => {
+  items.forEach((it) => {
     const el = document.createElement('div');
-    el.className = 'part' + (current.missing(p).length ? ' blocked' : '');
-    el.dataset.id = p.def.id;
-    el.innerHTML = `<img src="${p.thumb}" alt=""><span>${p.def.name}</span>`;
-    el.addEventListener('pointerdown', (ev) => trayDown(ev, p.def.id, el));
+    el.className = 'part' + (it.blocked ? ' blocked' : '');
+    el.dataset.id = it.id;
+    el.innerHTML = `<img src="${it.thumb}" alt=""><span>${it.name}</span>${it.count ? `<b class="count">×${it.count}</b>` : ''}`;
+    el.addEventListener('pointerdown', (ev) => trayDown(ev, it, el));
     tray.appendChild(el);
   });
 }
 
-function trayDown(ev, id, el) {
+/** Arrastar da bandeja para cima: peças vão em 3D; parafusos e pregos seguem o dedo como figura. */
+function trayDown(ev, item, el) {
   const sx = ev.clientX;
   const sy = ev.clientY;
   const touch = ev.pointerType !== 'mouse';
+  const lift = touch ? 60 : 0;
+  const isPart = item.kind === 'part';
+  const float = $('drag-float');
   let dragging = false;
   let aborted = false;
+  const moveFloat = (x, y) => {
+    float.style.left = `${x}px`;
+    float.style.top = `${y - lift}px`;
+  };
   const move = (e) => {
     if (e.pointerId !== ev.pointerId || aborted) return;
     if (!dragging) {
       const dx = e.clientX - sx;
       const dy = e.clientY - sy;
       if (-dy > 12 && -dy > Math.abs(dx)) {
-        dragging = play.beginDrag(id, e.clientX, e.clientY, touch);
-        if (!dragging) aborted = true;
-        else el.classList.add('dragging');
+        if (isPart) {
+          dragging = play.beginDrag(item.id, e.clientX, e.clientY, touch);
+          if (!dragging) aborted = true;
+        } else {
+          dragging = true;
+          float.src = item.thumb;
+          float.classList.remove('hidden');
+          Sfx.pick();
+        }
+        if (dragging) el.classList.add('dragging');
       }
-      return;
+      if (!dragging) return;
     }
     e.preventDefault();
-    play.moveDrag(e.clientX, e.clientY);
+    if (isPart) play.moveDrag(e.clientX, e.clientY);
+    else moveFloat(e.clientX, e.clientY);
   };
   const up = (e) => {
     if (e.pointerId !== ev.pointerId) return;
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', up);
     window.removeEventListener('pointercancel', up);
-    if (dragging) {
-      el.classList.remove('dragging');
-      play.endDrag();
+    el.classList.remove('dragging');
+    if (dragging && isPart) play.endDrag();
+    else if (dragging) {
+      float.classList.add('hidden');
+      play.insertAt(item.kind, e.clientX, e.clientY - lift);
     } else if (!aborted && e.type === 'pointerup' && Math.hypot(e.clientX - sx, e.clientY - sy) < 10) {
-      play.peek(id);
+      play.peek(item.id);
     }
   };
   window.addEventListener('pointermove', move, { passive: false });
   window.addEventListener('pointerup', up);
   window.addEventListener('pointercancel', up);
+}
+
+// ---------- ferramentas ----------
+
+function selectTool(id) {
+  tool = id;
+  const bar = $('toolbar');
+  bar.innerHTML = '';
+  Object.entries(TOOLS).forEach(([tid, t]) => {
+    const lv = toolLevel(tid);
+    if (!lv) return; // parafusadeira ainda não comprada
+    const b = document.createElement('button');
+    b.className = 'tool' + (tid === tool ? ' on' : '');
+    b.title = t.name;
+    b.innerHTML = `${t.icon}${t.max > 1 ? `<i>Nv${lv}</i>` : ''}`;
+    b.addEventListener('click', () => {
+      Sfx.click();
+      selectTool(tid);
+      toast(t.name);
+    });
+    bar.appendChild(b);
+  });
+}
+
+function drawRing() {
+  const el = $('ring');
+  const now = performance.now();
+  if (play && ring && (!ring.until || now < ring.until)) {
+    const s = play.screenOf(ring.pos);
+    el.style.left = `${s.x}px`;
+    el.style.top = `${s.y}px`;
+    el.style.setProperty('--p', Math.round(ring.progress * 100));
+    el.classList.remove('hidden');
+  } else {
+    el.classList.add('hidden');
+  }
+  requestAnimationFrame(drawRing);
+}
+requestAnimationFrame(drawRing);
+
+// ---------- oficina ----------
+
+function openShop() {
+  if (!stopShowcase) startShowcase();
+  show('shop');
+  updateCoins();
+  Ads.showBanner();
+  const list = $('shop-list');
+  list.innerHTML = '';
+  Object.entries(TOOLS).forEach(([id, t]) => {
+    if (t.max <= 1) return;
+    const lv = toolLevel(id);
+    const price = nextPrice(id);
+    const card = document.createElement('div');
+    card.className = 'tool-card';
+    const now = lv ? t.desc(lv) : t.desc(0);
+    const next = price != null && lv ? `Próximo nível: ${t.desc(lv + 1)}` : '';
+    const label = price == null ? 'Nível máximo' : lv ? `Melhorar · ${price} 🪙` : `Comprar · ${price} 🪙`;
+    card.innerHTML = `<div class="big">${t.icon}</div><h3>${t.name}</h3>
+      <div class="lv">${'★'.repeat(lv)}<span class="off">${'★'.repeat(t.max - lv)}</span></div>
+      <p>${now}${next ? `<br>${next}` : ''}</p>`;
+    const b = document.createElement('button');
+    b.className = 'btn green';
+    b.textContent = label;
+    b.disabled = price == null;
+    b.addEventListener('click', () => {
+      if (upgradeTool(id)) {
+        Sfx.coin();
+        toast(`${t.name} melhorada!`);
+        openShop();
+      } else {
+        Sfx.wrong();
+        toast(`Faltam ${price - Save.get('coins')} moedas. Monte mais coisas!`);
+      }
+    });
+    card.appendChild(b);
+    list.appendChild(card);
+  });
 }
 
 // ---------- botões ----------
@@ -213,6 +314,8 @@ bindTap('btn-play', () => {
   openLevels();
 });
 bindTap('btn-levels-back', openMenu);
+bindTap('btn-shop', openShop);
+bindTap('btn-shop-back', openMenu);
 bindTap('btn-sfx', () => {
   Save.set('muted', !Save.get('muted'));
   sfxLabels();

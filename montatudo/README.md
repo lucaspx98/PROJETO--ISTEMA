@@ -2,7 +2,18 @@
 
 Jogo 3D de **montagem realista** para iPhone, feito com [Three.js](https://threejs.org) + [Capacitor](https://capacitorjs.com) e monetizado com **Google AdMob**.
 
-Arraste as peças da bandeja até o contorno no lugar certo, na ordem de uma montagem de verdade (não dá para pôr o cooler antes do processador!), e toque nos parafusos para apertar. Gire a câmera com um dedo e dê zoom com dois.
+Arraste as peças da bandeja até o contorno no lugar certo, na ordem de uma montagem de verdade (não dá para pôr o cooler antes do processador!). Gire a câmera com um dedo e dê zoom com dois.
+
+## Ferramentas
+
+| Ferramenta | Para quê | Como usar |
+|---|---|---|
+| 🖐️ Mão | Memória RAM, placa de vídeo, parafusos de dedo da tampa de vidro | Toque na peça até encaixar; gire o dedo em círculos no parafuso de dedo |
+| 🪛 Chave de fenda | Parafusos | Arraste o parafuso da bandeja até o furo laranja e gire o dedo em círculos, no sentido horário (anti-horário afrouxa) |
+| 🔨 Martelo | Pregos e peças que entram sob pressão (tampo nas cavilhas, base da cadeira, prateleiras) | Toque para bater. Martelar parafuso ou peça de computador conta como erro |
+| ⚡ Parafusadeira | Parafusos, sem girar | Comprada na Oficina; segure em cima do parafuso |
+
+Na **🧰 Oficina** as ferramentas sobem de nível com moedas: a chave pede menos voltas (4 → 1,1), o martelo menos batidas (5 → 1) e a parafusadeira gira mais rápido. Preços em `src/tools.js`.
 
 ## Fases
 
@@ -14,7 +25,7 @@ Arraste as peças da bandeja até o contorno no lugar certo, na ordem de uma mon
 | 4 | PC gamer | gabinete, fonte, placa-mãe, processador, cooler, 2 memórias, SSD M.2, placa de vídeo, ventoinhas RGB, tampa de vidro + 8 parafusos |
 | 5 | Setup gamer completo | mousepad, suporte, monitor, teclado, mouse, caixas de som, computador, luminária |
 
-Cada fase dá de 1 a 3 estrelas (conforme os erros de ordem) e moedas. As moedas compram **dicas**. Para criar uma fase nova, copie um arquivo de `src/levels/` e registre em `src/levels/index.js`. Cada peça é só uma função que monta formas 3D nas medidas reais (metros).
+Cada fase dá de 1 a 3 estrelas (conforme os erros: ordem errada, ferramenta errada) e moedas. As moedas compram **dicas** e **melhorias de ferramentas**. Para criar uma fase nova, copie um arquivo de `src/levels/` e registre em `src/levels/index.js`. Cada peça é só uma função que monta formas 3D nas medidas reais (metros).
 
 ## Monetização
 
@@ -22,7 +33,7 @@ Cada fase dá de 1 a 3 estrelas (conforme os erros de ordem) e moedas. As moedas
 |---|---|---|
 | **Banner** | Menu, lista de fases e tela de vitória (nunca durante a montagem) | Receita contínua sem atrapalhar |
 | **Intersticial** | Ao sair da tela de vitória, a cada 2 fases e no máximo 1 a cada 90 s | Pausa natural |
-| **Recompensado** | "Dobrar moedas" na vitória e "Dica" quando faltam moedas | É o que mais paga, e o jogador escolhe ver |
+| **Recompensado** | "Dobrar moedas" na vitória e "Dica" quando faltam moedas | É o que mais paga, e o jogador escolhe ver; as melhorias da Oficina dão motivo para querer moedas |
 
 Tudo é configurado em `src/config.js`. No iPhone, o jogo mostra o aviso de rastreamento da Apple (ATT) antes dos anúncios.
 
@@ -83,7 +94,8 @@ Com isso, cada push gera o build assinado e envia direto para o TestFlight.
 ```
 src/
   levels/           as fases: cada peça com forma, medidas e o que precisa vir antes
-  game.js           arrastar, encaixar, ordem de montagem, parafusos, estrelas
+  game.js           arrastar, encaixar, ordem de montagem, ferramentas, parafusos/pregos, estrelas
+  tools.js          ferramentas: níveis, preços e modelos 3D
   engine.js         cena 3D: luz, sombras, sala, câmera orbital
   materials.js      madeira, metal, placa de circuito, vidro, tecido, RGB (texturas geradas por código)
   geo.js            formas básicas e ventoinha

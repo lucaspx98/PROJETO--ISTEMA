@@ -111,5 +111,5 @@ export const setup = {
         ),
     },
   ],
-  screws: [],
+  screws: [-1, 1].map((sx) => ({ pos: [sx * 0.08, TOP + 0.012, -0.13], normal: [0, 1, 0], after: 'suporte' })),
 };
