@@ -513,7 +513,8 @@ export class Play {
   showTool(id, f) {
     if (this.toolMesh) this.root.remove(this.toolMesh);
     this.toolMesh = toolModel(id, toolLevel(id));
-    this.toolMesh.scale.setScalar(this.s);
+    // Ferramenta quase em tamanho real, mesmo quando o parafuso é pequeno (PC)
+    this.toolMesh.scale.setScalar(Math.max(this.s, 0.75));
     this.toolMesh.userData.f = f;
     this.root.add(this.toolMesh);
     this.toolHideAt = Infinity;
