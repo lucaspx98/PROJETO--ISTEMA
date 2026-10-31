@@ -74,7 +74,16 @@ export class Engine {
     this.camera.aspect = w / h;
     // Celular em pé: abre um pouco o campo de visão para caber o objeto inteiro
     this.camera.fov = w < h ? 50 : 38;
+    // Durante a montagem, a imagem sobe para o objeto não ficar atrás da bandeja e das ferramentas
+    if (this.bottomInset) this.camera.setViewOffset(w, h + this.bottomInset, 0, this.bottomInset, w, h);
+    else this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
+  }
+
+  /** Reserva `px` na parte de baixo da tela: o centro da cena sobe `px / 2`. */
+  setBottomInset(px) {
+    this.bottomInset = px;
+    this.resize();
   }
 
   /** Enquadra a câmera num alvo. `dist` é ajustado para telas em pé. */

@@ -100,6 +100,7 @@ export class Play {
     this.toolMesh = null;
     this.toolHideAt = 0;
 
+    engine.setBottomInset(230);
     engine.frameView(level, level.view?.az, level.view?.polar);
     this.ticker = (dt) => this.tick(dt);
     engine.tickers.add(this.ticker);
@@ -671,6 +672,7 @@ export class Play {
     window.removeEventListener('pointerup', this.onUp, true);
     window.removeEventListener('pointercancel', this.onUp, true);
     this.hooks.onRing(null);
+    this.e.setBottomInset(0);
     this.e.scene.remove(this.root);
     this.e.controls.autoRotate = false;
     this.e.controls.enabled = true;
