@@ -1,6 +1,6 @@
 # Corre Corre 🏃‍♂️
 
-> Este repositório também tem o **Órbita**, um jogo para iPhone/App Store, na pasta [`orbita/`](orbita/README.md).
+> Este repositório também tem o **Monta Tudo 3D**, jogo 3D de montagem para iPhone/App Store, na pasta [`montatudo/`](montatudo/README.md) (e o protótipo **Órbita** em [`orbita/`](orbita/README.md)).
 
 Jogo **runner infinito** para Android, feito com [Phaser 3](https://phaser.io) + [Capacitor](https://capacitorjs.com) e monetizado com **Google AdMob**.
 

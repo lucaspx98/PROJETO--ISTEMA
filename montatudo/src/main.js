@@ -152,7 +152,9 @@ function renderTray(parts, current) {
   const tray = $('tray');
   tray.innerHTML = '';
   if (!parts.length) {
-    tray.innerHTML = '<div class="tray-empty">Todas as peças no lugar! Toque nos parafusos laranja 🔩</div>';
+    tray.innerHTML = `<div class="tray-empty">${
+      current.level.screws.length ? 'Todas as peças no lugar! Toque nos parafusos laranja 🔩' : 'Tudo montado! 🎉'
+    }</div>`;
     return;
   }
   parts.forEach((p) => {
