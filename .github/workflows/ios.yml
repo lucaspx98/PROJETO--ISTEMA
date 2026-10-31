@@ -1,14 +1,14 @@
-name: iOS build (Órbita)
+name: iOS build (Monta Tudo 3D)
 
 on:
   push:
     branches: ['**']
-    paths: ['orbita/**', '.github/workflows/ios.yml']
+    paths: ['montatudo/**', '.github/workflows/ios.yml']
   workflow_dispatch:
 
 defaults:
   run:
-    working-directory: orbita
+    working-directory: montatudo
 
 jobs:
   build:
@@ -22,7 +22,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: orbita/package-lock.json
+          cache-dependency-path: montatudo/package-lock.json
 
       - name: Build web + sync Capacitor
         run: |
@@ -32,17 +32,17 @@ jobs:
 
       # Confere que o app compila (simulador, sem assinatura). Não precisa de conta Apple.
       - name: Compilar para o simulador
-        working-directory: orbita/ios/App
+        working-directory: montatudo/ios/App
         run: |
           xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build | tail -20
 
       # Envia para o TestFlight se os secrets da App Store Connect estiverem configurados
-      # (veja orbita/README.md, seção "Build automático para o TestFlight").
+      # (veja montatudo/README.md, seção "Build automático para o TestFlight").
       - name: Archive + upload TestFlight
         if: env.HAS_ASC_KEY == 'true'
-        working-directory: orbita/ios/App
+        working-directory: montatudo/ios/App
         env:
           ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}

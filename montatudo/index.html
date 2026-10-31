@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#d9d2c7" />
+    <title>Monta Tudo 3D</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+
+    <div id="menu" class="screen">
+      <div class="topbar"><span></span><span class="coins">🪙 <b class="coin-val">0</b></span></div>
+      <div class="logo">
+        <h1>MONTA TUDO</h1>
+        <div class="tag">3D</div>
+        <p>Monte móveis e computadores peça por peça</p>
+      </div>
+      <div class="menu-bottom">
+        <button id="btn-play" class="btn big green">▶ Jogar</button>
+        <div class="row">
+          <button id="btn-sfx" class="btn small"></button>
+          <button id="btn-music" class="btn small"></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="levels" class="screen hidden">
+      <div class="topbar">
+        <button id="btn-levels-back" class="icon">←</button>
+        <b class="title">Escolha o que montar</b>
+        <span class="coins">🪙 <b class="coin-val">0</b></span>
+      </div>
+      <div id="level-list"></div>
+    </div>
+
+    <div id="hud" class="hidden">
+      <div class="topbar">
+        <button id="btn-quit" class="icon">✕</button>
+        <div class="hud-title"><b id="lvl-name"></b><div class="bar"><i id="lvl-bar"></i></div></div>
+        <span id="lvl-time" class="pill">0:00</span>
+      </div>
+      <button id="btn-hint" class="btn hint"></button>
+      <div id="tray"></div>
+    </div>
+
+    <div id="done" class="modal hidden">
+      <div class="card">
+        <h2>Montagem concluída!</h2>
+        <div id="done-stars" class="stars"></div>
+        <p id="done-info"></p>
+        <p class="reward">+<b id="done-coins">0</b> 🪙</p>
+        <button id="btn-double" class="btn orange">Dobrar moedas (anúncio)</button>
+        <button id="btn-next" class="btn green">Próxima fase ▶</button>
+        <button id="btn-done-levels" class="btn gray">Fases</button>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="ad-sim"><b>ANÚNCIO (simulado)</b><span id="ad-sim-text"></span></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

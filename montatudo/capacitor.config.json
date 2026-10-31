@@ -1,0 +1,13 @@
+{
+  "appId": "com.lucaspx.montatudo",
+  "appName": "Monta Tudo 3D",
+  "webDir": "dist",
+  "backgroundColor": "#d9d2c7",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "AdMob": {}
+  }
+}
