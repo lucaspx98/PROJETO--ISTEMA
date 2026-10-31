@@ -89,7 +89,7 @@ export class Engine {
   /** Enquadra a câmera num alvo. `dist` é ajustado para telas em pé. */
   frameView({ target, cam, shadow }, azimuth = 0.55, polar = 1.05) {
     const t = new THREE.Vector3(...target);
-    const portrait = window.innerWidth < window.innerHeight ? 1.25 : 1;
+    const portrait = window.innerWidth < window.innerHeight ? 1.4 : 1;
     const d = cam.dist * portrait;
     this.controls.target.copy(t);
     this.controls.minDistance = cam.min * portrait;

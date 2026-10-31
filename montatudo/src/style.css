@@ -92,7 +92,9 @@ html, body {
 .hud-title b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bar { height: 6px; background: rgba(0,0,0,.1); border-radius: 3px; margin-top: 5px; overflow: hidden; }
 .bar i { display: block; height: 100%; width: 0; background: var(--green); transition: width .3s; }
-.btn.hint { align-self: flex-end; margin: 4px 16px; font-size: 15px; padding: 10px 14px; background: #f59f00; }
+.tool-row { margin-top: auto; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; justify-content: center; }
+.tool.hint { background: #fff3bf; flex: 0 0 auto; }
+.tool.hint i { right: -8px; white-space: nowrap; }
 
 #tray {
   margin-top: auto; display: flex; gap: 10px; overflow-x: auto; touch-action: pan-x;
@@ -143,7 +145,7 @@ body.foto .screen, body.foto #hud, body.foto #toast { display: none !important; 
 
 /* Barra de ferramentas */
 #toolbar {
-  margin-top: auto; align-self: center; display: flex; gap: 10px; padding: 8px 12px; margin-bottom: 8px;
+  display: flex; gap: 10px; padding: 8px 12px;
   background: var(--panel); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-radius: 999px; box-shadow: 0 4px 16px rgba(0,0,0,.18);
 }

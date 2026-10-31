@@ -28,7 +28,7 @@ function show(id) {
 
 function updateCoins() {
   document.querySelectorAll('.coin-val').forEach((el) => (el.textContent = Save.get('coins')));
-  $('btn-hint').textContent = Save.get('coins') >= HINT_PRICE ? `💡 Dica · ${HINT_PRICE} 🪙` : '💡 Dica (anúncio)';
+  $('btn-hint').innerHTML = `💡<i>${Save.get('coins') >= HINT_PRICE ? `${HINT_PRICE}🪙` : 'anúncio'}</i>`;
 }
 
 let toastTimer;

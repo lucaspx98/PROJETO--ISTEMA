@@ -100,7 +100,7 @@ export class Play {
     this.toolMesh = null;
     this.toolHideAt = 0;
 
-    engine.setBottomInset(230);
+    engine.setBottomInset(150);
     engine.frameView(level, level.view?.az, level.view?.polar);
     this.ticker = (dt) => this.tick(dt);
     engine.tickers.add(this.ticker);
