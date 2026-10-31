@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+*.keystore
+*.jks
+keystore.properties
+*.p12
+*.mobileprovision

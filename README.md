@@ -1,5 +1,7 @@
 # Corre Corre 🏃‍♂️
 
+> Este repositório também tem o **Órbita**, um jogo para iPhone/App Store, na pasta [`orbita/`](orbita/README.md).
+
 Jogo **runner infinito** para Android, feito com [Phaser 3](https://phaser.io) + [Capacitor](https://capacitorjs.com) e monetizado com **Google AdMob**.
 
 Toque para pular, toque de novo no ar para o pulo duplo, solte cedo para um pulo baixo. Desvie de espinhos e serras, pouse nos blocos, junte moedas e compre novos personagens na loja.

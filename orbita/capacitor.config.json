@@ -1,0 +1,13 @@
+{
+  "appId": "com.lucaspx.orbita",
+  "appName": "Órbita",
+  "webDir": "dist",
+  "backgroundColor": "#070b1f",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "AdMob": {}
+  }
+}
