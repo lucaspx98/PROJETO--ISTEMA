@@ -388,14 +388,28 @@ export class Play {
     });
   }
 
+  /** Peça esperando martelo/mão: aceita o toque mesmo se outra peça estiver na frente. */
+  looseAt(x, y) {
+    const loose = this.parts.filter((p) => p.placed && !p.seated);
+    if (!loose.length) return null;
+    const ndc = new THREE.Vector2((x / window.innerWidth) * 2 - 1, -(y / window.innerHeight) * 2 + 1);
+    this.raycaster.setFromCamera(ndc, this.e.camera);
+    const hit = this.raycaster.intersectObjects(loose.map((p) => p.group), true)[0];
+    if (hit) return loose.find((p) => p.group.getObjectById(hit.object.id));
+    return loose.find((p) => {
+      const s = this.screenOf(this.partTop(p));
+      return Math.hypot(s.x - x, s.y - y) < PICK_RADIUS_PX;
+    });
+  }
+
   pointerDown(ev) {
     if (this.done || this.held || ev.target !== this.e.canvas) return;
     const x = ev.clientX;
     const y = ev.clientY;
     // Parafuso/prego já colocado tem prioridade sobre furo vazio ao lado (o dedo começa o giro fora do centro)
     const f = this.nearestFastener(x, y, ['in']) ?? this.nearestFastener(x, y, ['hole']);
-    const part = f ? null : this.hitPartAt(x, y);
-    const loose = part && part.placed && !part.seated ? part : null;
+    const loose = f ? null : this.looseAt(x, y);
+    const part = f || loose ? loose : this.hitPartAt(x, y);
     if (this.useTool(this.hooks.getTool(), f, loose, part, x, y)) {
       ev.stopPropagation();
       ev.preventDefault();
