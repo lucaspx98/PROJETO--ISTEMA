@@ -186,7 +186,7 @@ export const computador = {
   icon: '🖥️',
   target: [0.0, 0.23, 0],
   view: { az: -0.5, polar: 1.15 },
-  cam: { dist: 0.95, min: 0.45, max: 1.6 },
+  cam: { dist: 1.2, min: 0.45, max: 1.8 },
   snap: 0.035,
   screwSize: 0.32,
   fragile: true, // martelo aqui é erro
