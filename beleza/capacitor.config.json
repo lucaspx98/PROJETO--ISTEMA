@@ -1,0 +1,13 @@
+{
+  "appId": "com.lucaspx.salaorelax",
+  "appName": "Salão Relax",
+  "webDir": "dist",
+  "backgroundColor": "#f6dfe4",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false
+  },
+  "plugins": {
+    "AdMob": {}
+  }
+}

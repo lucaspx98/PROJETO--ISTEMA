@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#f6dfe4" />
+    <title>Salão Relax</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="c"></canvas>
+
+    <div id="menu" class="screen">
+      <div class="topbar"><span class="pill">💇‍♀️ <b id="stat-clients">0</b> clientes</span><span class="pill coins">🪙 <b class="coin-val">0</b></span></div>
+      <div class="logo">
+        <h1>Salão Relax</h1>
+        <div class="tag">ASMR 3D</div>
+        <p>Limpe, maquie, faça as unhas e o cabelo das clientes</p>
+      </div>
+      <div class="menu-bottom">
+        <button id="btn-play" class="btn big">▶ Atender cliente</button>
+        <button id="btn-shop" class="btn lilac">🛍️ Loja</button>
+        <div class="row">
+          <button id="btn-sfx" class="btn small"></button>
+          <button id="btn-music" class="btn small"></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="shop" class="screen hidden">
+      <div class="topbar">
+        <button id="btn-shop-back" class="icon">←</button>
+        <b class="title">🛍️ Loja do salão</b>
+        <span class="pill coins">🪙 <b class="coin-val">0</b></span>
+      </div>
+      <div id="shop-list"></div>
+    </div>
+
+    <div id="hud" class="hidden">
+      <div class="topbar">
+        <button id="btn-quit" class="icon">✕</button>
+        <div class="client">
+          <b id="client-name"></b>
+          <div id="wants"></div>
+        </div>
+      </div>
+      <div id="stations"></div>
+      <div id="panel">
+        <div class="step-head"><span id="step-icon"></span><div><b id="step-title"></b><small id="step-hint"></small></div><span id="step-count"></span></div>
+        <div class="bar"><i id="step-bar"></i></div>
+        <div id="swatches"></div>
+        <div class="row">
+          <button id="btn-skip" class="btn small ghost"></button>
+          <button id="btn-ready" class="btn small" disabled>Pronto ✓</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="banner" class="hidden"></div>
+
+    <div id="done" class="modal hidden">
+      <div class="card">
+        <h2 id="done-title">Cliente feliz! 😍</h2>
+        <div id="done-stars" class="stars"></div>
+        <div id="done-list"></div>
+        <p class="reward">+<b id="done-coins">0</b> 🪙 <small id="done-tip"></small></p>
+        <button id="btn-double" class="btn orange">Dobrar moedas (anúncio)</button>
+        <button id="btn-next" class="btn big">Próxima cliente ▶</button>
+        <button id="btn-done-menu" class="btn gray">Menu</button>
+      </div>
+    </div>
+
+    <div id="toast"></div>
+    <div id="ad-sim"><b>ANÚNCIO (simulado)</b><span id="ad-sim-text"></span></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
