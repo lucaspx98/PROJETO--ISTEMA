@@ -284,8 +284,8 @@ export function buildClient(client) {
     ear.position.copy(onHead(dir(s * 1.5, 0.02), -0.004));
     root.add(ear);
   });
-  const neck = mesh(new THREE.CylinderGeometry(0.038, 0.044, 0.09, 32), skin);
-  neck.position.y = -0.125;
+  const neck = mesh(new THREE.CylinderGeometry(0.037, 0.043, 0.07, 32), skin);
+  neck.position.y = -0.115;
   root.add(neck);
   const nose = mesh(new THREE.SphereGeometry(0.0095, 24, 16), skinMat(shade(client.skin, 0.98)));
   nose.scale.set(1.05, 0.85, 0.9);
@@ -422,14 +422,14 @@ export function buildClient(client) {
   // Toalha turbante (rosto e unhas)
   const towelMat = new THREE.MeshStandardMaterial({ map: fabricTex('#ffffff'), roughness: 1 });
   const towel = new THREE.Group();
-  const cap = mesh(new THREE.SphereGeometry(R * 1.12, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.42), towelMat);
-  cap.scale.set(SCALE.x, SCALE.y * 1.1, SCALE.z);
-  const band = mesh(new THREE.TorusGeometry(R * 0.98, 0.016, 16, 64), towelMat);
-  band.rotation.x = Math.PI / 2 + 0.28;
-  band.position.y = 0.045;
+  const cap = mesh(new THREE.SphereGeometry(R * 1.05, 48, 24, 0, Math.PI * 2, 0, Math.PI * 0.34), towelMat);
+  cap.scale.set(SCALE.x, SCALE.y * 0.98, SCALE.z);
+  const band = mesh(new THREE.TorusGeometry(R * 0.97, 0.011, 16, 64), towelMat);
+  band.rotation.x = Math.PI / 2 + 0.16;
+  band.position.y = 0.062;
   band.scale.set(SCALE.x, SCALE.z, 1);
-  const knot = mesh(new THREE.SphereGeometry(0.035, 24, 16), towelMat);
-  knot.position.set(0, 0.105, 0.03);
+  const knot = mesh(new THREE.SphereGeometry(0.024, 24, 16), towelMat);
+  knot.position.set(0, 0.098, 0.02);
   knot.scale.set(1.3, 0.8, 1);
   towel.add(cap, band, knot);
   root.add(towel);
@@ -438,13 +438,13 @@ export function buildClient(client) {
   // Capa do salão e encosto da cadeira
   // Capa: perfil girado (pescoço -> ombros -> peito), achatada na frente/atrás
   const profile = [
-    [0.0, -0.165],
-    [0.047, -0.165],
-    [0.06, -0.18],
-    [0.15, -0.205],
-    [0.2, -0.24],
-    [0.215, -0.3],
-    [0.22, -0.48],
+    [0.0, -0.142],
+    [0.046, -0.142],
+    [0.06, -0.156],
+    [0.15, -0.182],
+    [0.2, -0.218],
+    [0.215, -0.28],
+    [0.22, -0.46],
   ].map(([x, y]) => new THREE.Vector2(x, y));
   const cape = mesh(new THREE.LatheGeometry(profile, 64), new THREE.MeshStandardMaterial({ map: fabricTex(client.cape), roughness: 0.85, side: THREE.DoubleSide }));
   cape.scale.set(1, 1, 0.62);
@@ -478,7 +478,7 @@ function buildHand(client, skin) {
   cushion.position.set(0.005, -0.03, 0.03);
   g.add(cushion);
   const nails = [];
-  const tipMat = new THREE.MeshPhysicalMaterial({ color: 0xfbf3ee, roughness: 0.3, transmission: 0, clearcoat: 0.5 });
+  const tipMat = new THREE.MeshPhysicalMaterial({ color: 0xfbf3ee, roughness: 0.4, clearcoat: 0.3, envMapIntensity: 0.35 });
   FINGERS.forEach((f) => {
     const fg = new THREE.Group();
     fg.position.set(f.x, 0.002, 0.036 + f.z);
@@ -488,7 +488,8 @@ function buildHand(client, skin) {
     finger.position.z = f.len / 2;
     fg.add(finger);
     const srf = nailSurface();
-    const plateMat = new THREE.MeshPhysicalMaterial({ map: srf.tex, roughness: 0.25, clearcoat: 1, clearcoatRoughness: 0.08 });
+    // verniz discreto: com a câmera de cima, brilho forte deixava a unha toda branca
+    const plateMat = new THREE.MeshPhysicalMaterial({ map: srf.tex, roughness: 0.35, clearcoat: 0.35, clearcoatRoughness: 0.35, envMapIntensity: 0.35 });
     const plate = mesh(new RoundedBoxGeometry(f.r * 1.45, 0.0018, 0.014, 2, 0.0008), plateMat, false);
     const zPlate = f.len / 2 + f.r - 0.009;
     plate.position.set(0, f.r * 0.92, zPlate);
