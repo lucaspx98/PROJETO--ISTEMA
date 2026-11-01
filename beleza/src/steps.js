@@ -378,7 +378,7 @@ export function buildSteps(ctx) {
       view: HAIR_VIEW(-0.6),
       targets: () => hairMeshes,
       setup() {
-        c.towel.visible = false;
+        c.setSpa(false);
         c.hairGroup.visible = true;
       },
       brush(hit, prev) {

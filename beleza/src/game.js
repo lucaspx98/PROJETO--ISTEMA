@@ -112,7 +112,7 @@ export class Session {
 
   finishAll() {
     this.setTool(null);
-    this.c.towel.visible = false;
+    this.c.setSpa(false);
     this.c.hairGroup.visible = true;
     this.e.setBottomInset(0);
     this.e.view({ target: [0, -0.02, 0], dist: 0.55, az: 0, polar: 1.45, free: true }, 900);
@@ -248,7 +248,7 @@ export class Session {
     this.blinkT -= dt;
     if (this.blinkT <= 0) {
       this.blinkT = 2.5 + Math.random() * 3;
-      this.e.tween(180, (k) => c.eyes.forEach((eye) => (eye.scale.y = Math.max(0.1, Math.abs(1 - 2 * k)))));
+      this.e.tween(200, (k) => c.blink(1 - Math.abs(1 - 2 * k)));
     }
 
     const s = this.step;
@@ -292,7 +292,7 @@ export function showcaseClient(engine) {
   client.strays = 0;
   const c = buildClient(client);
   c.face.clear('dirt');
-  c.towel.visible = false;
+  c.setSpa(false);
   c.hairGroup.visible = true;
   c.hair.forEach((h) => {
     h.surface.clear('wet');
@@ -304,7 +304,7 @@ export function showcaseClient(engine) {
   c.lips.update();
   c.face.update();
   engine.scene.add(c.root);
-  engine.view({ target: [0, 0.035, 0], dist: 0.62, az: 0.35, polar: 1.42, free: true }, 0);
+  engine.view({ target: [0, -0.05, 0], dist: 0.6, az: 0.3, polar: 1.45, free: true }, 0);
   engine.controls.autoRotate = true;
   engine.controls.autoRotateSpeed = 1.2;
   let t = 0;
@@ -312,7 +312,7 @@ export function showcaseClient(engine) {
     t -= dt;
     if (t <= 0) {
       t = 3 + Math.random() * 2;
-      engine.tween(180, (k) => c.eyes.forEach((eye) => (eye.scale.y = Math.max(0.1, Math.abs(1 - 2 * k)))));
+      engine.tween(200, (k) => c.blink(1 - Math.abs(1 - 2 * k)));
     }
   };
   engine.tickers.add(tick);
