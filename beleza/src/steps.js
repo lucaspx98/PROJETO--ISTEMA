@@ -25,6 +25,11 @@ export function buildSteps(ctx) {
   const lipMeshes = c.lipMeshes;
   if (!c.lips.layer('lipstick')) c.lips.add('lipstick', 'source-over', 0.95);
 
+  // Lábios: só a parte virada para a frente (o resto fica dentro da boca)
+  const lipsRegion = c.lips.regionFromMeshes(lipMeshes, (n) => n.z > 0.35);
+  // Cabelo comprido: a parte encostada na cabeça/pescoço não aparece
+  const hairRegions = c.hair.map((h) => h.surface.regionFromMeshes([h.mesh], (n) => (h.mesh.geometry.type === 'CapsuleGeometry' ? n.z < 0.1 : true)));
+
   const nails = c.hand.nails;
   const plates = nails.map((n) => n.plate);
   const nailOf = (obj) => nails.find((n) => n.plate === obj || n.tip === obj);
@@ -253,7 +258,7 @@ export function buildSteps(ctx) {
         c.lips.stroke('lipstick', prev?.uv, hit.uv, R(0.09), rgb(this.color), 0.6);
       },
       measure() {
-        return c.lips.coverage('lipstick', null) / 0.9;
+        return c.lips.coverage('lipstick', lipsRegion) / 0.88;
       },
       onColor() {
         c.lips.clear('lipstick');
@@ -383,7 +388,7 @@ export function buildSteps(ctx) {
         fx.spawn('gota', from, hit.normal.clone().multiplyScalar(-0.3), 2, 0.05);
       },
       measure() {
-        return avg(c.hair.map((h) => h.surface.coverage('wet', null, 0.3))) / 0.85;
+        return avg(c.hair.map((h, i) => h.surface.coverage('wet', hairRegions[i], 0.3))) / 0.85;
       },
     }),
     {
@@ -455,7 +460,7 @@ export function buildSteps(ctx) {
       view: HAIR_VIEW(0.6),
       targets: () => hairMeshes,
       setup() {
-        this.start = Math.max(0.01, avg(c.hair.map((h) => h.surface.coverage('wet', null, 0.15))));
+        this.start = Math.max(0.01, avg(c.hair.map((h, i) => h.surface.coverage('wet', hairRegions[i], 0.15))));
       },
       brush(hit, prev, intensity) {
         const h = hairOf(hit.object);
@@ -464,7 +469,7 @@ export function buildSteps(ctx) {
         h.mesh.scale.multiplyScalar(1 + (Math.random() - 0.5) * 0.004);
       },
       measure() {
-        return (1 - avg(c.hair.map((h) => h.surface.coverage('wet', null, 0.15))) / this.start) / 0.9;
+        return (1 - avg(c.hair.map((h, i) => h.surface.coverage('wet', hairRegions[i], 0.15))) / this.start) / 0.9;
       },
       finish() {
         c.hair.forEach((h) => h.surface.clear('wet'));
@@ -485,7 +490,7 @@ export function buildSteps(ctx) {
         h.surface.stroke('dye', prev?.object === hit.object ? prev.uv : null, hit.uv, R(0.07), rgb(this.color), 0.7);
       },
       measure() {
-        return avg(c.hair.map((h) => h.surface.coverage('dye', null))) / 0.85;
+        return avg(c.hair.map((h, i) => h.surface.coverage('dye', hairRegions[i]))) / 0.85;
       },
       onColor() {
         c.hair.forEach((h) => h.surface.clear('dye'));

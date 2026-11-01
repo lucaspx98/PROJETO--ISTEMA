@@ -113,6 +113,39 @@ export class Surface {
     return { m, count };
   }
 
+  /**
+   * Região = partes da textura usadas pelos vértices que passam no filtro `keep(normalNoMundo)`.
+   * Serve para medir só o lado visível (ex.: frente dos lábios, não a parte escondida).
+   */
+  regionFromMeshes(meshes, keep) {
+    const m = new Uint8Array(SAMPLE * SAMPLE);
+    const n = new THREE.Vector3();
+    const nm = new THREE.Matrix3();
+    for (const mesh of meshes) {
+      mesh.updateMatrixWorld(true);
+      nm.getNormalMatrix(mesh.matrixWorld);
+      const uv = mesh.geometry.attributes.uv;
+      const normal = mesh.geometry.attributes.normal;
+      for (let i = 0; i < uv.count; i++) {
+        n.fromBufferAttribute(normal, i).applyMatrix3(nm).normalize();
+        if (!keep(n)) continue;
+        const ci = Math.min(SAMPLE - 1, Math.floor(uv.getX(i) * SAMPLE));
+        const cj = Math.min(SAMPLE - 1, Math.floor((1 - uv.getY(i)) * SAMPLE));
+        // marca a célula e as vizinhas (os vértices são mais espaçados que a amostragem)
+        for (let dj = -2; dj <= 2; dj++) {
+          for (let di = -2; di <= 2; di++) {
+            const x = ci + di;
+            const y = cj + dj;
+            if (x >= 0 && y >= 0 && x < SAMPLE && y < SAMPLE) m[y * SAMPLE + x] = 1;
+          }
+        }
+      }
+    }
+    let count = 0;
+    for (let k = 0; k < m.length; k++) count += m[k];
+    return { m, count };
+  }
+
   /** Fração da região em que a camada está com alfa acima do limite. */
   coverage(name, region, threshold = 0.45) {
     const c = this.sampleCtx;
