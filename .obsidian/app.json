@@ -2,7 +2,19 @@
   "userIgnoreFilters": [
     "node_modules/",
     "dist/",
-    "android/"
+    "android/",
+    "montatudo/node_modules/",
+    "montatudo/dist/",
+    "montatudo/android/",
+    "montatudo/ios/",
+    "beleza/node_modules/",
+    "beleza/dist/",
+    "beleza/android/",
+    "beleza/ios/",
+    "orbita/node_modules/",
+    "orbita/dist/",
+    "orbita/android/",
+    "orbita/ios/"
   ],
   "newFileLocation": "folder",
   "newFileFolderPath": "notas",
