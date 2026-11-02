@@ -1,0 +1,67 @@
+name: Android build (Monta Tudo 3D)
+
+on:
+  push:
+    branches: ['**']
+    paths: ['montatudo/**', '.github/workflows/android-montatudo.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: montatudo
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.MONTATUDO_KEYSTORE_BASE64 != '' }}
+      VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: montatudo/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build web + sync Capacitor
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      # APK de teste: baixe na aba Actions e instale no celular Android
+      - name: Debug APK
+        working-directory: montatudo/android
+        run: ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monta-tudo-debug-apk
+          path: montatudo/android/app/build/outputs/apk/debug/*.apk
+
+      # Pacote assinado para enviar à Play Store (precisa dos secrets da chave)
+      - name: Release AAB
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.MONTATUDO_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.MONTATUDO_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.MONTATUDO_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.MONTATUDO_KEY_PASSWORD }}
+        working-directory: montatudo/android
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          ./gradlew bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          name: monta-tudo-release-aab
+          path: montatudo/android/app/build/outputs/bundle/release/*.aab

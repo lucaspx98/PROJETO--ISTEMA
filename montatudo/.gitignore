@@ -4,3 +4,6 @@ dist/
 *.log
 *.p12
 *.mobileprovision
+*.keystore
+*.jks
+keystore.properties

@@ -3,16 +3,19 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Monta Tudo 3D — jogo de montagem realista para iPhone (Three.js + Capacitor + AdMob)",
+  "description": "Monta Tudo 3D — jogo de montagem realista para Android e iPhone (Three.js + Capacitor + AdMob)",
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview --host",
     "ios:sync": "npm run build && npx cap sync ios",
-    "ios:open": "npx cap open ios"
+    "ios:open": "npx cap open ios",
+    "android:sync": "npm run build && npx cap sync android",
+    "android:open": "npx cap open android"
   },
   "dependencies": {
     "@capacitor-community/admob": "^8.3.0",
+    "@capacitor/android": "^8.6.0",
     "@capacitor/core": "^8.6.0",
     "@capacitor/ios": "^8.6.0",
     "three": "^0.180.0"
