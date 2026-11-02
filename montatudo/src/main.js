@@ -1,4 +1,6 @@
 // Controlador do app: telas (menu, fases, oficina, jogo, vitória), bandeja, ferramentas e anúncios.
+import { App } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 import { Engine } from './engine.js';
 import { Play, showcase } from './game.js';
 import { LEVELS } from './levels/index.js';
@@ -11,6 +13,7 @@ import { TOOLS, nextPrice, toolLevel, upgradeTool } from './tools.js';
 
 const $ = (id) => document.getElementById(id);
 const engine = new Engine($('c'));
+let screen = 'menu';
 let play = null;
 let levelIndex = 0;
 let stopShowcase = null;
@@ -23,6 +26,7 @@ Ads.init();
 // ---------- utilidades de interface ----------
 
 function show(id) {
+  screen = id;
   ['menu', 'levels', 'shop', 'hud', 'done'].forEach((s) => $(s).classList.toggle('hidden', s !== id && !(id === 'done' && s === 'hud')));
 }
 
@@ -187,7 +191,7 @@ function trayDown(ev, item, el) {
     float.style.top = `${y - lift}px`;
   };
   const move = (e) => {
-    if (e.pointerId !== ev.pointerId || aborted) return;
+    if (e.pointerId !== ev.pointerId || aborted || !play) return;
     if (!dragging) {
       const dx = e.clientX - sx;
       const dy = e.clientY - sy;
@@ -215,6 +219,8 @@ function trayDown(ev, item, el) {
     window.removeEventListener('pointerup', up);
     window.removeEventListener('pointercancel', up);
     el.classList.remove('dragging');
+    // O botão Voltar pode encerrar a fase com a peça ainda na mão
+    if (!play) return float.classList.add('hidden');
     if (dragging && isPart) play.endDrag();
     else if (dragging) {
       float.classList.add('hidden');
@@ -346,6 +352,16 @@ bindTap('btn-double', async () => {
 });
 bindTap('btn-next', () => leaveDone(true));
 bindTap('btn-done-levels', () => leaveDone(false));
+
+// Botão Voltar do Android: faz o mesmo que o botão de voltar de cada tela; só fecha o jogo a partir do menu.
+function goBack() {
+  if (screen === 'menu') return App.exitApp();
+  Sfx.click();
+  if (screen === 'hud') quitLevel();
+  else if (screen === 'done') leaveDone(false);
+  else openMenu();
+}
+if (Capacitor.getPlatform() === 'android') App.addListener('backButton', goBack);
 
 setInterval(() => play && !play.done && ($('lvl-time').textContent = fmtTime(play.time)), 250);
 
