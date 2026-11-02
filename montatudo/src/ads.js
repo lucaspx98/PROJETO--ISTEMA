@@ -32,9 +32,14 @@ export const Ads = {
     try {
       await AdMob.initialize({ initializeForTesting: ADS.useTestAds });
       // Consentimento (GDPR/LGPD) via UMP do Google: obrigatório para anúncios personalizados na Europa.
-      const consent = await AdMob.requestConsentInfo();
-      if (consent.isConsentFormAvailable && consent.status === AdmobConsentStatus.REQUIRED) {
-        await AdMob.showConsentForm();
+      // Sem aviso publicado em "Privacidade e mensagens" do AdMob o Google devolve erro: os anúncios continuam.
+      try {
+        const consent = await AdMob.requestConsentInfo();
+        if (consent.isConsentFormAvailable && consent.status === AdmobConsentStatus.REQUIRED) {
+          await AdMob.showConsentForm();
+        }
+      } catch (e) {
+        console.warn('Consentimento indisponível', e);
       }
       // iPhone: a Apple exige perguntar antes de usar o IDFA (App Tracking Transparency).
       // O texto do aviso fica em ios/App/App/Info.plist (NSUserTrackingUsageDescription).

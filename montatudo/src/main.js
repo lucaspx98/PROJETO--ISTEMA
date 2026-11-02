@@ -10,6 +10,7 @@ import { Music } from './music.js';
 import { Ads } from './ads.js';
 import { HINT_PRICE } from './config.js';
 import { TOOLS, nextPrice, toolLevel, upgradeTool } from './tools.js';
+import { tr, applyDom, nextLang, langName } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 const engine = new Engine($('c'));
@@ -22,6 +23,7 @@ let tool = 'mao';
 let ring = null; // { pos, progress, until }
 
 Ads.init();
+applyDom();
 
 // ---------- utilidades de interface ----------
 
@@ -32,13 +34,13 @@ function show(id) {
 
 function updateCoins() {
   document.querySelectorAll('.coin-val').forEach((el) => (el.textContent = Save.get('coins')));
-  $('btn-hint').innerHTML = `💡<i>${Save.get('coins') >= HINT_PRICE ? `${HINT_PRICE}🪙` : 'anúncio'}</i>`;
+  $('btn-hint').innerHTML = `💡<i>${Save.get('coins') >= HINT_PRICE ? `${HINT_PRICE}🪙` : tr('anúncio')}</i>`;
 }
 
 let toastTimer;
 function toast(msg) {
   const t = $('toast');
-  t.textContent = msg;
+  t.textContent = tr(msg);
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => t.classList.remove('show'), 1900);
@@ -49,8 +51,9 @@ const starsHtml = (n) => [1, 2, 3].map((i) => (i <= n ? '★' : '<span class="of
 const unlocked = (i) => i === 0 || Save.starsOf(LEVELS[i - 1].id) > 0;
 
 function sfxLabels() {
-  $('btn-sfx').textContent = Save.get('muted') ? '🔇 Efeitos' : '🔊 Efeitos';
-  $('btn-music').textContent = Save.get('musicOff') ? '🎵 Música: não' : '🎵 Música: sim';
+  $('btn-sfx').textContent = tr(Save.get('muted') ? '🔇 Efeitos' : '🔊 Efeitos');
+  $('btn-music').textContent = tr(Save.get('musicOff') ? '🎵 Música: não' : '🎵 Música: sim');
+  $('btn-lang').textContent = `🌐 ${langName()}`;
 }
 
 function bindTap(id, fn) {
@@ -86,8 +89,8 @@ function openLevels() {
     const open = unlocked(i);
     const b = document.createElement('button');
     b.className = 'level' + (open ? '' : ' locked');
-    b.innerHTML = `<div class="emoji">${open ? lvl.icon : '🔒'}</div><div class="num">FASE ${i + 1}</div>
-      <div class="name">${lvl.name}</div><div class="st">${open ? starsHtml(Save.starsOf(lvl.id)) : '&nbsp;'}</div>`;
+    b.innerHTML = `<div class="emoji">${open ? lvl.icon : '🔒'}</div><div class="num">${tr('FASE {n}', { n: i + 1 })}</div>
+      <div class="name">${tr(lvl.name)}</div><div class="st">${open ? starsHtml(Save.starsOf(lvl.id)) : '&nbsp;'}</div>`;
     b.addEventListener('click', () => {
       Sfx.click();
       if (!open) return toast('Termine a fase anterior para liberar');
@@ -106,7 +109,7 @@ function startLevel(i) {
   Ads.hideBanner();
   Music.start();
   show('hud');
-  $('lvl-name').textContent = `${i + 1}. ${level.name}`;
+  $('lvl-name').textContent = `${i + 1}. ${tr(level.name)}`;
   updateCoins();
   play = new Play(engine, level, {
     onTray: renderTray,
@@ -142,7 +145,7 @@ function complete({ stars, time, mistakes }) {
   Sfx.coin();
   updateCoins();
   $('done-stars').innerHTML = starsHtml(stars);
-  $('done-info').textContent = `Tempo ${fmtTime(time)} · ${mistakes} ${mistakes === 1 ? 'erro' : 'erros'}`;
+  $('done-info').textContent = tr(mistakes === 1 ? 'Tempo {t} · {n} erro' : 'Tempo {t} · {n} erros', { t: fmtTime(time), n: mistakes });
   $('done-coins').textContent = lastReward;
   $('btn-double').classList.remove('hidden');
   $('btn-next').classList.toggle('hidden', levelIndex >= LEVELS.length - 1);
@@ -163,14 +166,14 @@ function renderTray(items, current) {
   tray.innerHTML = '';
   if (!items.length) {
     const pending = current.fasteners.some((f) => f.state !== 'done') || current.parts.some((p) => !p.seated);
-    tray.innerHTML = `<div class="tray-empty">${pending ? 'Tudo na bandeja já foi usado. Termine de prender com as ferramentas 🔧' : 'Tudo montado! 🎉'}</div>`;
+    tray.innerHTML = `<div class="tray-empty">${tr(pending ? 'Tudo na bandeja já foi usado. Termine de prender com as ferramentas 🔧' : 'Tudo montado! 🎉')}</div>`;
     return;
   }
   items.forEach((it) => {
     const el = document.createElement('div');
     el.className = 'part' + (it.blocked ? ' blocked' : '');
     el.dataset.id = it.id;
-    el.innerHTML = `<img src="${it.thumb}" alt=""><span>${it.name}</span>${it.count ? `<b class="count">×${it.count}</b>` : ''}`;
+    el.innerHTML = `<img src="${it.thumb}" alt=""><span>${tr(it.name)}</span>${it.count ? `<b class="count">×${it.count}</b>` : ''}`;
     el.addEventListener('pointerdown', (ev) => trayDown(ev, it, el));
     tray.appendChild(el);
   });
@@ -245,8 +248,8 @@ function selectTool(id) {
     if (!lv) return; // parafusadeira ainda não comprada
     const b = document.createElement('button');
     b.className = 'tool' + (tid === tool ? ' on' : '');
-    b.title = t.name;
-    b.innerHTML = `${t.icon}${t.max > 1 ? `<i>Nv${lv}</i>` : ''}`;
+    b.title = tr(t.name);
+    b.innerHTML = `${t.icon}${t.max > 1 ? `<i>${tr('Nv{n}', { n: lv })}</i>` : ''}`;
     b.addEventListener('click', () => {
       Sfx.click();
       selectTool(tid);
@@ -288,9 +291,9 @@ function openShop() {
     const card = document.createElement('div');
     card.className = 'tool-card';
     const now = lv ? t.desc(lv) : t.desc(0);
-    const next = price != null && lv ? `Próximo nível: ${t.desc(lv + 1)}` : '';
-    const label = price == null ? 'Nível máximo' : lv ? `Melhorar · ${price} 🪙` : `Comprar · ${price} 🪙`;
-    card.innerHTML = `<div class="big">${t.icon}</div><h3>${t.name}</h3>
+    const next = price != null && lv ? tr('Próximo nível: {x}', { x: t.desc(lv + 1) }) : '';
+    const label = price == null ? tr('Nível máximo') : tr(lv ? 'Melhorar · {n} 🪙' : 'Comprar · {n} 🪙', { n: price });
+    card.innerHTML = `<div class="big">${t.icon}</div><h3>${tr(t.name)}</h3>
       <div class="lv">${'★'.repeat(lv)}<span class="off">${'★'.repeat(t.max - lv)}</span></div>
       <p>${now}${next ? `<br>${next}` : ''}</p>`;
     const b = document.createElement('button');
@@ -300,11 +303,11 @@ function openShop() {
     b.addEventListener('click', () => {
       if (upgradeTool(id)) {
         Sfx.coin();
-        toast(`${t.name} melhorada!`);
+        toast(tr('{x} melhorada!', { x: tr(t.name) }));
         openShop();
       } else {
         Sfx.wrong();
-        toast(`Faltam ${price - Save.get('coins')} moedas. Monte mais coisas!`);
+        toast(tr('Faltam {n} moedas. Monte mais coisas!', { n: price - Save.get('coins') }));
       }
     });
     card.appendChild(b);
@@ -329,6 +332,11 @@ bindTap('btn-sfx', () => {
 bindTap('btn-music', () => {
   Music.toggle();
   sfxLabels();
+});
+bindTap('btn-lang', () => {
+  nextLang();
+  sfxLabels();
+  updateCoins();
 });
 bindTap('btn-quit', quitLevel);
 bindTap('btn-hint', async () => {

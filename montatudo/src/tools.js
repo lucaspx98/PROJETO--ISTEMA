@@ -3,20 +3,21 @@ import * as THREE from 'three';
 import { M } from './materials.js';
 import { box, cyl, group, rot } from './geo.js';
 import { Save } from './storage.js';
+import { tr, num } from './i18n.js';
 
 /**
  * stat(level) devolve o número que a ferramenta melhora; `costs[i]` é o preço para ir do nível i+1 ao i+2.
  * A parafusadeira começa no nível 0 (não comprada).
  */
 export const TOOLS = {
-  mao: { name: 'Mão', icon: '🖐️', max: 1, costs: [], desc: () => 'Encaixa memória, placa de vídeo e parafusos de dedo' },
+  mao: { name: 'Mão', icon: '🖐️', max: 1, costs: [], desc: () => tr('Encaixa memória, placa de vídeo e parafusos de dedo') },
   chave: {
     name: 'Chave de fenda',
     icon: '🪛',
     max: 5,
     costs: [120, 260, 480, 850],
     turns: [4, 3, 2.2, 1.6, 1.1],
-    desc: (l) => `${String(TOOLS.chave.turns[l - 1]).replace('.', ',')} voltas por parafuso`,
+    desc: (l) => tr('{n} voltas por parafuso', { n: num(TOOLS.chave.turns[l - 1]) }),
   },
   martelo: {
     name: 'Martelo',
@@ -24,7 +25,7 @@ export const TOOLS = {
     max: 5,
     costs: [120, 260, 480, 850],
     mult: [1, 0.8, 0.6, 0.45, 0.3],
-    desc: (l) => `${Math.max(1, Math.round(5 * TOOLS.martelo.mult[l - 1]))} batidas por prego`,
+    desc: (l) => tr('{n} batidas por prego', { n: Math.max(1, Math.round(5 * TOOLS.martelo.mult[l - 1])) }),
   },
   parafusadeira: {
     name: 'Parafusadeira',
@@ -32,7 +33,7 @@ export const TOOLS = {
     max: 4,
     costs: [600, 500, 900, 1400], // o primeiro é a compra
     speed: [1, 1.6, 2.4, 3.6],
-    desc: (l) => (l ? `Segure no parafuso: ${String(TOOLS.parafusadeira.speed[l - 1]).replace('.', ',')} voltas/s` : 'Aperta sozinha enquanto você segura'),
+    desc: (l) => (l ? tr('Segure no parafuso: {n} voltas/s', { n: num(TOOLS.parafusadeira.speed[l - 1]) }) : tr('Aperta sozinha enquanto você segura')),
   },
 };
 

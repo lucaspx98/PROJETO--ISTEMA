@@ -5,6 +5,7 @@ import { M } from './materials.js';
 import { ease } from './engine.js';
 import { Sfx } from './audio.js';
 import { thumbnail } from './thumbs.js';
+import { tr } from './i18n.js';
 import { DRILL_TURNS, TOOLS, nailModel, screwModel, thumbScrewModel, toolLevel, toolModel } from './tools.js';
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -180,8 +181,8 @@ export class Play {
     const p = this.part(id);
     const miss = this.missing(p);
     if (miss.length) {
-      const names = [...new Set(miss.map((q) => q.def.name))].join(', ');
-      this.mistake(miss.some((q) => q.placed) ? `Termine de prender: ${names}` : `Antes, coloque: ${names}`);
+      const names = [...new Set(miss.map((q) => tr(q.def.name)))].join(', ');
+      this.mistake(tr(miss.some((q) => q.placed) ? 'Termine de prender: {x}' : 'Antes, coloque: {x}', { x: names }));
       return false;
     }
     this.started = true;
@@ -261,8 +262,8 @@ export class Play {
       p.group.position.addScaledVector(p.pressDir, -p.pressDist);
       this.hooks.onToast(
         press.tool === 'martelo'
-          ? `Pegue o martelo 🔨 e bata: ${p.def.name}`
-          : `Pressione com a mão 🖐️ até encaixar: ${p.def.name}`,
+          ? tr('Pegue o martelo 🔨 e bata: {x}', { x: tr(p.def.name) })
+          : tr('Pressione com a mão 🖐️ até encaixar: {x}', { x: tr(p.def.name) }),
       );
     } else {
       this.seat(p);
@@ -591,7 +592,7 @@ export class Play {
     if (loose) {
       this.flashGhost(loose);
       return this.hooks.onToast(
-        loose.def.press.tool === 'martelo' ? `Martelo 🔨 + toques: ${loose.def.name}` : `Mão 🖐️ + toques: ${loose.def.name}`,
+        tr(loose.def.press.tool === 'martelo' ? 'Martelo 🔨 + toques: {x}' : 'Mão 🖐️ + toques: {x}', { x: tr(loose.def.name) }),
       );
     }
     const inF = this.fasteners.find((f) => f.state === 'in');
@@ -609,7 +610,7 @@ export class Play {
     if (next) {
       this.hooks.onHighlight(next.def.id);
       this.flashGhost(next);
-      this.hooks.onToast(`Próxima peça: ${next.def.name}`);
+      this.hooks.onToast(tr('Próxima peça: {x}', { x: tr(next.def.name) }));
     }
   }
 

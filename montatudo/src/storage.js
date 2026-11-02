@@ -7,6 +7,7 @@ const DEFAULTS = {
   tools: {}, // id da ferramenta -> nível comprado na Oficina
   muted: false,
   musicOff: false,
+  lang: null, // idioma escolhido (null = o do aparelho)
 };
 
 let data = load();

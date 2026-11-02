@@ -32,3 +32,7 @@ Falta (depende do dono):
 - O dono fala português; responda em português simples
 - O teste em navegador sem GPU (Playwright + SwiftShader) é muito lento: espere as transições da câmera (`engine.tweens`) antes de tirar prints
 - Não suba chaves (`*.jks`, `keystore.properties`) para o Git; já estão no `.gitignore`
+
+## Idiomas
+
+Português, inglês e espanhol em `src/i18n.js`: o texto em português é a chave da tabela. Sem escolha salva, usa o idioma do aparelho (outros idiomas caem em inglês). O botão 🌐 do menu troca e salva. Texto novo na tela precisa de `tr()` e de uma linha na tabela. Ficha da loja e política de privacidade continuam só em português.
