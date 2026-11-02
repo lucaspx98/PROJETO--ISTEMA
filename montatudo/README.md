@@ -58,6 +58,26 @@ npm run ios:open   # abre no Xcode → escolha seu iPhone → ▶
 
 Cada push no GitHub já compila o app para o simulador (aba **Actions** → *iOS build (Monta Tudo 3D)*), para conferir que nada quebrou.
 
+## Publicar na Play Store (Android)
+
+O build automático do GitHub (aba **Actions** → *Android build (Monta Tudo 3D)*) gera a cada push:
+- **`monta-tudo-debug-apk`**: APK para instalar e testar em qualquer celular Android;
+- **`monta-tudo-release-aab`**: o pacote assinado para a Play Store (quando os secrets da chave estiverem cadastrados).
+
+Textos da ficha, respostas dos formulários, ícone 512×512, imagem de destaque e capturas de tela estão em [`loja/`](loja/play-store.md).
+
+1. **Conta Google Play Console**: https://play.google.com/console (US$ 25, uma vez só).
+2. **AdMob**: crie o app **Android** e os 3 blocos (Banner, Intersticial, Premiado). Troque os IDs em `src/config.js` → `ADS.android` e `android/app/src/main/AndroidManifest.xml` → `APPLICATION_ID`, e mude `useTestAds` para `false`.
+3. **Chave de assinatura (upload key)**, guarde com backup:
+   ```bash
+   keytool -genkeypair -v -keystore montatudo.jks -alias montatudo -keyalg RSA -keysize 2048 -validity 10000
+   ```
+   Cadastre em *Settings → Secrets and variables → Actions*: `MONTATUDO_KEYSTORE_BASE64` (`base64 -w0 montatudo.jks`), `MONTATUDO_KEYSTORE_PASSWORD`, `MONTATUDO_KEY_ALIAS` (`montatudo`) e `MONTATUDO_KEY_PASSWORD`.
+4. **Política de privacidade**: publique `docs/privacidade.html` e cole o link no Play Console.
+5. **Criar o app** no Play Console, preencher a ficha e os formulários com `loja/play-store.md` e enviar o `.aab` num **teste fechado**.
+6. Contas pessoais novas precisam de **12 testadores por 14 dias** no teste fechado antes de liberar a produção.
+7. **app-ads.txt**: o AdMob mostra uma linha para pôr em `seusite.com/app-ads.txt`; informe o site na ficha da loja.
+
 ## Passo a passo para publicar na App Store
 
 1. **Apple Developer Program**: https://developer.apple.com/programs (US$ 99/ano). Pode ser pessoa física.
