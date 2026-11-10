@@ -36,7 +36,7 @@ export const LEVELS = [
   { name: 'Encurralado', ground: [floor(), wall(525, 540, 300)], char: on(470, 840), hives: [{ x: 70, y: 300, count: 26 }], ink: 650, hintPts: [{ x: 500, y: 548 }, { x: 392, y: 828 }] },
   { name: 'Buraco e canhões', ground: [floor(), wall(160, 720, 120), wall(380, 720, 120)], char: on(270, 840), cannons: [{ x: 45, y: 640, dir: 1, every: 1.4 }, { x: 495, y: 640, dir: -1, every: 1.7 }], hives: [{ x: 270, y: 160, count: 14 }], ink: 900, hint: 'dome', hintR: 76 },
   { name: 'Ilha', ground: [spikes(270, 900, 600), plat(270, 640, 150)], char: on(270, 640), hives: [{ x: 80, y: 260, count: 20 }, { x: 460, y: 260, count: 20 }], ink: 1000, hint: 'dome', hintR: 68 },
-  { name: 'Chefão', ground: [floor()], char: on(270, 840), hives: [{ x: 70, y: 230, count: 14 }, { x: 470, y: 230, count: 14 }], rocks: { x0: 200, x1: 340, count: 8, every: 1 }, cannons: [{ x: 45, y: 790, dir: 1, every: 2.4 }], ink: 1300, time: 12, hint: 'dome' },
+  { name: 'Chefão', ground: [floor()], char: on(270, 840), hives: [{ x: 70, y: 230, count: 14 }, { x: 470, y: 230, count: 14 }], rocks: { x0: 200, x1: 340, count: 8, every: 1 }, cannons: [{ x: 45, y: 790, dir: 1, every: 2.4 }], ink: 1300, time: 8, hint: 'dome' },
 ];
 
 // Depois da última fase: fases geradas, sempre um pouco mais difíceis.

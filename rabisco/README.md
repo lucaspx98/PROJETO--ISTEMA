@@ -2,7 +2,7 @@
 
 Jogo casual no estilo "desenhe para salvar" (como nos anúncios), com física de verdade. Feito com [Matter.js](https://brm.io/matter-js/) + canvas 2D + [Capacitor](https://capacitorjs.com) e monetizado com **Google AdMob**.
 
-O **Bolota** está em perigo. Desenhe **um único traço** com o dedo: ao soltar, o traço vira um objeto físico (cai, apoia, bloqueia) e precisa proteger o Bolota por **10 segundos**. Perigos: enxame de abelhas que persegue o Bolota, chuva de pedras, canhões que miram nele, espinhos e quedas. A tinta é limitada: menos tinta, mais estrelas.
+O **Bolota** está em perigo. Desenhe **um único traço** com o dedo: ao soltar, o traço vira um objeto físico (cai, apoia, bloqueia) e precisa proteger o Bolota por **6 segundos** (8 no chefão). Perigos: enxame de abelhas que persegue o Bolota, chuva de pedras, canhões que miram nele, espinhos e quedas. A tinta é limitada: menos tinta, mais estrelas.
 
 ## Conteúdo
 

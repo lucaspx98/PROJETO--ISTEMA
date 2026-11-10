@@ -9,6 +9,8 @@ export const H = 960;
 export const CHAR_R = 34;
 export const LINE_W = 12;
 const STEP_MS = 1000 / 60;
+// Ritmo: < 1 deixa pedras e canhões mais frequentes (fases curtas e intensas)
+const PACE = 0.6;
 const MIN_GAP = 7; // distância mínima entre pontos do traço
 const LETHAL = new Set(['bee', 'rock', 'ball', 'spike']);
 // Categorias de colisão: abelhas e pedras/balas passam umas pelas outras
@@ -22,7 +24,7 @@ export class Level {
     this.def = def;
     this.hooks = hooks;
     // mais iterações = contatos estáveis (o traço apoiado no chão não treme nem escorrega)
-    this.engine = Engine.create({ gravity: { x: 0, y: 1, scale: 0.0012 }, positionIterations: 14, velocityIterations: 12 });
+    this.engine = Engine.create({ gravity: { x: 0, y: 1, scale: 0.0016 }, positionIterations: 14, velocityIterations: 12 });
     this.world = this.engine.world;
     this.statics = def.ground.map((g) => {
       const b = Bodies.rectangle(g.x, g.y, g.w, g.h, {
@@ -52,7 +54,7 @@ export class Level {
     this.inkMax = def.ink;
     this.inkUsed = 0;
     this.line = null;
-    this.timeTotal = def.time ?? 10;
+    this.timeTotal = def.time ?? 6;
     this.timeLeft = this.timeTotal;
     this.t = 0;
     this.acc = 0;
@@ -164,14 +166,14 @@ export class Level {
   planSpawns(def) {
     const list = [];
     (def.hives ?? []).forEach((h) => {
-      for (let i = 0; i < h.count; i++) list.push({ at: 0.15 + i * 0.05, kind: 'bee', x: h.x, y: h.y });
+      for (let i = 0; i < h.count; i++) list.push({ at: 0.1 + i * 0.03, kind: 'bee', x: h.x, y: h.y });
     });
     if (def.rocks) {
       const r = def.rocks;
-      for (let i = 0; i < r.count; i++) list.push({ at: 0.4 + i * r.every, kind: 'rock', x: r.x0 + Math.random() * (r.x1 - r.x0), y: -40 });
+      for (let i = 0; i < r.count; i++) list.push({ at: 0.2 + i * r.every * PACE, kind: 'rock', x: r.x0 + Math.random() * (r.x1 - r.x0), y: -40 });
     }
     (def.cannons ?? []).forEach((cn) => {
-      for (let t = 0.6; t < this.timeTotal; t += cn.every) list.push({ at: t, kind: 'ball', cannon: cn });
+      for (let t = 0.4; t < this.timeTotal; t += cn.every * PACE) list.push({ at: t, kind: 'ball', cannon: cn });
     });
     return list.sort((a, b) => a.at - b.at);
   }
@@ -185,7 +187,7 @@ export class Level {
         restitution: 0.6,
         collisionFilter: { group: -1, category: CAT_BEE, mask: 0xffff & ~CAT_DEBRIS }, // nem umas nas outras
       });
-      b.plugin = { speed: 4.2 + Math.random() * 1.6, phase: Math.random() * 6.28, wob: 0.5 + Math.random() * 0.6 };
+      b.plugin = { speed: 6 + Math.random() * 2, phase: Math.random() * 6.28, wob: 0.5 + Math.random() * 0.6 };
       this.bees.push(b);
       Composite.add(this.world, b);
     } else if (s.kind === 'rock') {
@@ -200,7 +202,7 @@ export class Level {
       const c = this.char.position;
       const a = Math.atan2(c.y - cn.y, c.x - cn.x);
       cn.aim = a;
-      const sp = cn.speed ?? 12;
+      const sp = (cn.speed ?? 12) * 1.25;
       const ox = cn.x + Math.cos(a) * 40;
       const oy = cn.y + Math.sin(a) * 40;
       const steps = Math.hypot(c.x - ox, c.y - oy) / sp;
@@ -274,8 +276,8 @@ export class Level {
       const wob = Math.sin(this.t * 7 + b.plugin.phase) * b.plugin.wob;
       const ang = Math.atan2(dy, dx) + wob;
       const sp = b.plugin.speed;
-      const vx = b.velocity.x + (Math.cos(ang) * sp - b.velocity.x) * 0.08;
-      const vy = b.velocity.y + (Math.sin(ang) * sp - b.velocity.y) * 0.08;
+      const vx = b.velocity.x + (Math.cos(ang) * sp - b.velocity.x) * 0.12;
+      const vy = b.velocity.y + (Math.sin(ang) * sp - b.velocity.y) * 0.12;
       Body.setVelocity(b, { x: vx, y: vy });
       // abelha voa: anula a gravidade que o motor aplica nela
       const g = this.engine.gravity;

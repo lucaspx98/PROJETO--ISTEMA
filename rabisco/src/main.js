@@ -118,12 +118,12 @@ function startLevel(i) {
   menuScene = null;
   fx.list = [];
   lv = new Level(levelAt(i), {
-    onWin: () => setTimeout(win, 700),
+    onWin: () => setTimeout(win, 350),
     onLose: (reason) => {
       Sfx.hurt();
       buzz?.stop();
       buzz = null;
-      setTimeout(() => lose(reason), 900);
+      setTimeout(() => lose(reason), 500);
     },
     onHit: (x, y) => fx.burst(x, y, ['#ff4d6d', '#ffd23f', '#ffffff'], 16, 7),
     onSpawn: (kind) => {
