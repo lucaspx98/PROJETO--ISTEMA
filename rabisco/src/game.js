@@ -129,23 +129,31 @@ export class Level {
       this.inkUsed = 0;
       return false;
     }
-    // menos pedaços = corpo mais estável; o desenho na tela continua com todos os pontos
-    const simple = simplify(this.points, 3);
+    // Traço alisado (sem "dentes" de dedo rápido). Na tela vai a forma lisa; na física, a mesma
+    // forma com menos pedaços (no máximo 3 px de diferença): poucos pedaços = contato firme, sem tremer.
+    let looks = simplify(smooth(this.points, 2), 0.8);
+    if (!looks.every((p) => this.free(p.x, p.y))) looks = simplify(this.points, 0.8); // alisar encostou em algo
+    const shape = simplify(looks, 3);
     const parts = [];
-    for (let i = 1; i < simple.length; i++) {
-      const a = simple[i - 1];
-      const b = simple[i];
+    const last = shape.length - 1;
+    for (let i = 1; i <= last; i++) {
+      let a = shape[i - 1];
+      let b = shape[i];
       const len = Math.hypot(b.x - a.x, b.y - a.y);
-      parts.push(
-        Bodies.rectangle((a.x + b.x) / 2, (a.y + b.y) / 2, len + LINE_W * 0.5, LINE_W, {
-          angle: Math.atan2(b.y - a.y, b.x - a.x),
-        }),
-      );
+      const ux = (b.x - a.x) / len;
+      const uy = (b.y - a.y) / len;
+      // pontas retas (meia espessura a mais): apoiam firme no chão em vez de rolar como bolinha
+      if (i === 1) a = { x: a.x - ux * LINE_W * 0.5, y: a.y - uy * LINE_W * 0.5 };
+      if (i === last) b = { x: b.x + ux * LINE_W * 0.5, y: b.y + uy * LINE_W * 0.5 };
+      const l2 = Math.hypot(b.x - a.x, b.y - a.y);
+      parts.push(Bodies.rectangle((a.x + b.x) / 2, (a.y + b.y) / 2, l2, LINE_W, { angle: Math.atan2(uy, ux) }));
     }
-    const line = Body.create({ parts, label: 'line', friction: 1, frictionStatic: 6, restitution: 0 });
-    Body.setDensity(line, 0.006);
+    // juntas do meio redondas: sem frestas nas dobras
+    shape.slice(1, -1).forEach((p) => parts.push(Bodies.circle(p.x, p.y, LINE_W / 2)));
+    const line = Body.create({ parts, label: 'line', friction: 1, frictionStatic: 10, restitution: 0, frictionAir: 0.015, slop: 0.01 });
+    Body.setDensity(line, 0.0065);
     const c = line.position;
-    line.plugin = { local: this.points.map((p) => ({ x: p.x - c.x, y: p.y - c.y })) };
+    line.plugin = { local: looks.map((p) => ({ x: p.x - c.x, y: p.y - c.y })) };
     Composite.add(this.world, line);
     this.line = line;
     this.state = 'run';
@@ -187,12 +195,12 @@ export class Level {
         restitution: 0.6,
         collisionFilter: { group: -1, category: CAT_BEE, mask: 0xffff & ~CAT_DEBRIS }, // nem umas nas outras
       });
-      b.plugin = { speed: 6 + Math.random() * 2, phase: Math.random() * 6.28, wob: 0.5 + Math.random() * 0.6 };
+      b.plugin = { side: Math.random() < 0.5 ? -1 : 1, flank: this.bees.length % 3 === 2 ? { x: (s.x < W / 2 ? 1 : -1) * 170, y: -60 } : null, speed: 6 + Math.random() * 2, phase: Math.random() * 6.28, wob: 0.5 + Math.random() * 0.6 };
       this.bees.push(b);
       Composite.add(this.world, b);
     } else if (s.kind === 'rock') {
       const r = 16 + Math.random() * 12;
-      const b = Bodies.polygon(s.x, s.y, 7, r, { label: 'rock', density: 0.002, restitution: 0.15, friction: 0.6, collisionFilter: { category: CAT_DEBRIS, mask: 0xffff & ~CAT_BEE } });
+      const b = Bodies.polygon(s.x, s.y, 7, r, { label: 'rock', density: 0.002, restitution: 0.1, friction: 0.6, frictionAir: 0.03, collisionFilter: { category: CAT_DEBRIS, mask: 0xffff & ~CAT_BEE } });
       Body.setAngularVelocity(b, (Math.random() - 0.5) * 0.2);
       this.hazards.push(b);
       Composite.add(this.world, b);
@@ -214,6 +222,99 @@ export class Level {
       cn.flash = 0.15;
     }
     this.hooks.onSpawn?.(s.kind);
+  }
+
+  /**
+   * Abelhas inteligentes:
+   * - parte do enxame dá a volta e ataca pelo outro lado (flanco);
+   * - "antenas" (raios) enxergam o traço e o chão: se o caminho está fechado, contornam
+   *   sempre pelo mesmo lado escolhido e assim acham brechas;
+   * - presa sem avançar, troca de lado; vendo o Bolota livre e perto, dá uma investida;
+   * - se afastam umas das outras para o enxame se espalhar.
+   */
+  steerBees() {
+    const c = this.char.position;
+    const g = this.engine.gravity;
+    const walls = this.line ? [...this.statics, this.line] : this.statics;
+    const clear = (from, ang, len) =>
+      Query.ray(walls, from, { x: from.x + Math.cos(ang) * len, y: from.y + Math.sin(ang) * len }, 14).length === 0;
+    const frame = Math.round(this.t * 60);
+
+    this.bees.forEach((b, i) => {
+      const P = b.plugin;
+      const pos = b.position;
+      let heading;
+      let speed = P.speed;
+      if (this.state === 'win') {
+        heading = Math.atan2(-1, pos.x < W / 2 ? -0.6 : 0.6); // vitória: vão embora
+      } else {
+        const dist = Math.hypot(c.x - pos.x, c.y - pos.y);
+        // alvo: flanco (dar a volta) até chegar perto; depois, o Bolota
+        const flank = dist > 150 && P.flank;
+        const tx = flank ? c.x + P.flank.x : c.x;
+        const ty = flank ? c.y + P.flank.y : c.y;
+        const direct = Math.atan2(ty - pos.y, tx - pos.x);
+        // as antenas são caras: cada abelha pensa a cada 3 quadros
+        if ((frame + i) % 3 === 0 || P.heading === undefined) {
+          const look = Math.min(90, Math.hypot(tx - pos.x, ty - pos.y));
+          if (clear(pos, direct, look)) {
+            P.heading = direct;
+            P.detour = false;
+          } else {
+            P.detour = true;
+            P.heading = direct + P.side * 2.4;
+            for (const off of [0.5, 0.9, 1.3, 1.7, 2.1]) {
+              if (clear(pos, direct + P.side * off, 60)) {
+                P.heading = direct + P.side * off;
+                break;
+              }
+            }
+          }
+          // presa: anda pouco por um tempo → troca o lado do contorno
+          P.stuckT = (P.stuckT ?? 0) + 3 / 60;
+          if (P.stuckT > 0.8) {
+            const moved = Math.hypot(pos.x - (P.lastX ?? pos.x), pos.y - (P.lastY ?? pos.y));
+            if (moved < 25) P.side *= -1;
+            P.lastX = pos.x;
+            P.lastY = pos.y;
+            P.stuckT = 0;
+          }
+        }
+        heading = P.heading + (P.detour ? 0 : Math.sin(this.t * 8 + P.phase) * 0.35);
+        if (!P.detour && dist < 150) speed *= 1.3; // investida
+      }
+      // separação: abelhas próximas se afastam um pouco
+      let sx = 0;
+      let sy = 0;
+      for (let k = 0; k < this.bees.length; k += 1) {
+        const o = this.bees[k];
+        if (o === b) continue;
+        const dx = pos.x - o.position.x;
+        const dy = pos.y - o.position.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < 400 && d2 > 0.01) {
+          sx += dx / d2;
+          sy += dy / d2;
+        }
+      }
+      // separação limitada (sem limite, duas abelhas coladas eram arremessadas através do traço)
+      const sm = Math.hypot(sx, sy) * 18;
+      const sk = sm > 2.5 ? 2.5 / sm : 1;
+      let vx = Math.cos(heading) * speed + sx * 18 * sk;
+      let vy = Math.sin(heading) * speed + sy * 18 * sk;
+      vx = b.velocity.x + (vx - b.velocity.x) * 0.14;
+      vy = b.velocity.y + (vy - b.velocity.y) * 0.14;
+      // velocidade máxima: nunca rápida o bastante para atravessar o traço num passo
+      const v = Math.hypot(vx, vy);
+      const MAXV = LINE_W * 0.85;
+      if (v > MAXV) {
+        vx *= MAXV / v;
+        vy *= MAXV / v;
+      }
+      Body.setVelocity(b, { x: vx, y: vy });
+      // abelha voa: anula a gravidade que o motor aplica nela
+      Body.applyForce(b, b.position, { x: 0, y: -b.mass * g.y * g.scale });
+    });
   }
 
   onCollide(e) {
@@ -258,31 +359,7 @@ export class Level {
     while (this.spawns.length && this.spawns[0].at <= this.t && this.state === 'run') this.spawn(this.spawns.shift());
     (this.def.cannons ?? []).forEach((cn) => (cn.flash = Math.max(0, (cn.flash ?? 0) - dt)));
 
-    // abelhas: voam em direção ao Bolota, ziguezagueando; na vitória vão embora
-    const c = this.char.position;
-    for (const b of this.bees) {
-      let tx = c.x;
-      let ty = c.y;
-      if (this.state === 'win') {
-        tx = b.position.x + (b.position.x < W / 2 ? -200 : 200);
-        ty = -200;
-      } else if (b.position.y > c.y + 20 && Math.hypot(b.position.x - c.x, b.position.y - c.y) > 110) {
-        // abaixo do Bolota e longe: sobe pelos lados para atacar por cima (não fica presa sob plataformas)
-        tx = c.x + (b.position.x < c.x ? -150 : 150);
-        ty = c.y - 120;
-      }
-      const dx = tx - b.position.x;
-      const dy = ty - b.position.y;
-      const wob = Math.sin(this.t * 7 + b.plugin.phase) * b.plugin.wob;
-      const ang = Math.atan2(dy, dx) + wob;
-      const sp = b.plugin.speed;
-      const vx = b.velocity.x + (Math.cos(ang) * sp - b.velocity.x) * 0.12;
-      const vy = b.velocity.y + (Math.sin(ang) * sp - b.velocity.y) * 0.12;
-      Body.setVelocity(b, { x: vx, y: vy });
-      // abelha voa: anula a gravidade que o motor aplica nela
-      const g = this.engine.gravity;
-      Body.applyForce(b, b.position, { x: 0, y: -b.mass * g.y * g.scale });
-    }
+    this.steerBees();
 
     Engine.update(this.engine, STEP_MS);
 
@@ -319,6 +396,23 @@ export class Level {
     }
     return best ? { x: best.position.x, y: best.position.y, d: bd } : null;
   }
+}
+
+/** Alisa a linha (Chaikin): corta os cantos `n` vezes, mantendo as pontas. */
+function smooth(pts, n) {
+  let out = pts;
+  for (let k = 0; k < n; k++) {
+    if (out.length < 3) return out;
+    const next = [out[0]];
+    for (let i = 0; i < out.length - 1; i++) {
+      const a = out[i];
+      const b = out[i + 1];
+      next.push({ x: a.x * 0.75 + b.x * 0.25, y: a.y * 0.75 + b.y * 0.25 }, { x: a.x * 0.25 + b.x * 0.75, y: a.y * 0.25 + b.y * 0.75 });
+    }
+    next.push(out[out.length - 1]);
+    out = next;
+  }
+  return out;
 }
 
 /** Simplifica uma linha (Ramer–Douglas–Peucker) mantendo a forma com tolerância `eps` px. */

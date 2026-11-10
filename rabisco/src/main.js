@@ -83,7 +83,9 @@ canvas.addEventListener('pointermove', (e) => {
   drawing.last = p;
   drawing.lastT = now;
   const wasBlocked = lv.blocked;
-  lv.extendStroke(p.x, p.y);
+  // todos os pontos do movimento (o navegador agrupa vários num evento só): traço mais fiel ao dedo
+  const all = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+  (all.length ? all.map(toWorld) : [p]).forEach((q) => lv.extendStroke(q.x, q.y));
   drawing.sound.set(lv.blocked ? 0 : Math.min(1, speed * 1.5));
   if (lv.blocked && !wasBlocked && lv.inkLeft > 0.01) Sfx.tick();
 });
