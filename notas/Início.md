@@ -5,6 +5,7 @@ Cofre do Obsidian ligado ao repositório dos jogos. Tudo que for escrito em `not
 ## Jogos
 - **Monta Tudo 3D** — montagem 3D (PC, móveis). Pasta `montatudo/` · ficha da loja em `montatudo/loja/play-store.md`
 - **Salão Relax** — salão de beleza ASMR 3D. Pasta `beleza/`
+- **Risca e Salva** — desenhe para salvar o Bolota (estilo anúncio). Pasta `rabisco/`
 - **Corre Corre** — runner 2D (raiz do repositório)
 - Órbita — protótipo (pasta `orbita/`)
 

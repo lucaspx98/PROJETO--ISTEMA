@@ -1,0 +1,67 @@
+name: Android build (Risca e Salva)
+
+on:
+  push:
+    branches: ['**']
+    paths: ['rabisco/**', '.github/workflows/android-rabisco.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: rabisco
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.RABISCO_KEYSTORE_BASE64 != '' }}
+      VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: rabisco/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build web + sync Capacitor
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      # APK de teste: baixe na aba Actions e instale no celular Android
+      - name: Debug APK
+        working-directory: rabisco/android
+        run: ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: risca-e-salva-debug-apk
+          path: rabisco/android/app/build/outputs/apk/debug/*.apk
+
+      # Pacote assinado para enviar à Play Store (precisa dos secrets da chave)
+      - name: Release AAB
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.RABISCO_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.RABISCO_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.RABISCO_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.RABISCO_KEY_PASSWORD }}
+        working-directory: rabisco/android
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          ./gradlew bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          name: risca-e-salva-release-aab
+          path: rabisco/android/app/build/outputs/bundle/release/*.aab

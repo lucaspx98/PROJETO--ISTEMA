@@ -1,0 +1,9 @@
+{
+  "appId": "com.lucaspx.riscaesalva",
+  "appName": "Risca e Salva",
+  "webDir": "dist",
+  "backgroundColor": "#7cc8ff",
+  "plugins": {
+    "AdMob": {}
+  }
+}
