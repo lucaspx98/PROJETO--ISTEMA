@@ -1,0 +1,9 @@
+{
+  "appId": "com.lucaspx.ilhabrava",
+  "appName": "Ilha Brava",
+  "webDir": "dist",
+  "backgroundColor": "#7ec8f0",
+  "plugins": {
+    "AdMob": {}
+  }
+}

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ilha Brava</string>
+    <string name="title_activity_main">Ilha Brava</string>
+    <string name="package_name">com.lucaspx.ilhabrava</string>
+    <string name="custom_url_scheme">com.lucaspx.ilhabrava</string>
+</resources>

@@ -1,0 +1,67 @@
+name: Android build (Ilha Brava)
+
+on:
+  push:
+    branches: ['**']
+    paths: ['ilha/**', '.github/workflows/android-ilha.yml']
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: ilha
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.ILHA_KEYSTORE_BASE64 != '' }}
+      VERSION_CODE: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ilha/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build web + sync Capacitor
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      # APK de teste: baixe na aba Actions e instale no celular Android
+      - name: Debug APK
+        working-directory: ilha/android
+        run: ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ilha-brava-debug-apk
+          path: ilha/android/app/build/outputs/apk/debug/*.apk
+
+      # Pacote assinado para enviar à Play Store (precisa dos secrets da chave)
+      - name: Release AAB
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ILHA_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ILHA_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ILHA_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ILHA_KEY_PASSWORD }}
+        working-directory: ilha/android
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
+          ./gradlew bundleRelease
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          name: ilha-brava-release-aab
+          path: ilha/android/app/build/outputs/bundle/release/*.aab
