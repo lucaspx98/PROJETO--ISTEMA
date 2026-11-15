@@ -1,5 +1,7 @@
 // Modelos 3D em estilo low-poly, todos feitos por código.
 import * as THREE from 'three';
+import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
+import { addWind } from './gfx.js';
 
 const mat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, roughness: 0.85, flatShading: true, ...o });
 const M = {
@@ -13,9 +15,9 @@ const M = {
   pine: mat(0x2f7a4a),
   rock: mat(0x8d9199),
   rockDark: mat(0x6b6f78),
-  berry: mat(0xd62f4b),
+  berry: mat(0xd62f4b, { roughness: 0.35 }),
   bush: mat(0x3f8f3a),
-  crystal: mat(0x6ff2ff, { emissive: 0x2ad4f0, emissiveIntensity: 0.9, roughness: 0.2 }),
+  crystal: mat(0x6ff2ff, { emissive: 0x2ad4f0, emissiveIntensity: 1.6, roughness: 0.15, metalness: 0.2 }),
   gold: mat(0xf2c230, { metalness: 0.6, roughness: 0.35, emissive: 0x7a5a00, emissiveIntensity: 0.6 }),
   metal: mat(0xb9c0c9, { metalness: 0.7, roughness: 0.4 }),
   slime: mat(0x6fdc5a, { transparent: true, opacity: 0.88, roughness: 0.3 }),
@@ -42,22 +44,193 @@ function mesh(geo, material, x = 0, y = 0, z = 0) {
 }
 const box = (w, h, d, m, x, y, z) => mesh(new THREE.BoxGeometry(w, h, d), m, x, y, z);
 
+// ---------- vegetação e pedras (formas orgânicas com sombra pintada nos vértices) ----------
+
+const vmat = (color, o = {}) => new THREE.MeshStandardMaterial({ color, vertexColors: true, roughness: 0.9, ...o });
+const NM = {
+  bark: vmat(0x7a5232),
+  leaf: addWind(vmat(0x5fae3e, { roughness: 0.8 }), 0.06, 2.0),
+  pine: addWind(vmat(0x2f7346, { flatShading: true }), 0.04, 1.8),
+  rock: vmat(0xffffff, { flatShading: true, roughness: 0.95 }),
+  bush: addWind(vmat(0x4c9a3a, { roughness: 0.8 }), 0.05, 0.3),
+};
+NM.leaf.userData.vary = NM.pine.userData.vary = NM.bush.userData.vary = true;
+
+/** Deforma cada vértice por um "ruído" que só depende da posição (as costuras não abrem). */
+function lumpy(geo, amt, freq, seed) {
+  const p = geo.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i);
+    const y = p.getY(i);
+    const z = p.getZ(i);
+    const n =
+      Math.sin(x * freq + seed) * Math.cos(z * freq * 1.3 + seed * 2.1) +
+      Math.sin(y * freq * 1.7 + seed * 3.3) * 0.5 +
+      Math.sin((x + z) * freq * 2.9 + seed) * 0.25;
+    const k = 1 + n * amt;
+    p.setXYZ(i, x * k, y * k, z * k);
+  }
+  return geo;
+}
+
+/** Bolha suave (normais lisas): base de copas e arbustos. */
+function blob(r, detail, amt, seed) {
+  let g = new THREE.IcosahedronGeometry(r, detail);
+  g.deleteAttribute('normal');
+  g.deleteAttribute('uv');
+  g = mergeVertices(g);
+  return lumpy(g, amt, 2.2 / r, seed);
+}
+
+/** Pinta cada vértice: fn(x, y, z, nx, ny, nz) → [r, g, b] */
+function paint(geo, fn) {
+  geo.computeVertexNormals();
+  const p = geo.attributes.position;
+  const n = geo.attributes.normal;
+  const c = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) c.set(fn(p.getX(i), p.getY(i), p.getZ(i), n.getX(i), n.getY(i), n.getZ(i)), i * 3);
+  geo.setAttribute('color', new THREE.BufferAttribute(c, 3));
+  return geo;
+}
+
+const clean = (g) => {
+  g.deleteAttribute('uv');
+  return g.index ? g : mergeVertices(g);
+};
+
+function canopy(parts, y0, y1) {
+  const g = mergeGeometries(parts.map(([r, x, y, z, seed]) => blob(r, 2, 0.13, seed).translate(x, y, z)));
+  // embaixo e por dentro mais escuro (oclusão), em cima mais claro (luz do céu)
+  return paint(g, (x, y, z, nx, ny) => {
+    const k = Math.min(1, Math.max(0, (y - y0) / (y1 - y0)));
+    const v = 0.42 + k * 0.6 + Math.max(0, ny) * 0.15;
+    return [v, v, v * 0.95];
+  });
+}
+
+function trunk(h, r0, r1, bend) {
+  let g = new THREE.CylinderGeometry(r1, r0, h, 8, 5);
+  g.deleteAttribute('uv');
+  g = mergeVertices(g);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i) + h / 2;
+    const ang = Math.atan2(p.getZ(i), p.getX(i));
+    const ridge = 1 + Math.sin(ang * 5 + y * 1.5) * 0.08;
+    p.setXYZ(i, p.getX(i) * ridge + bend * (y / h) ** 2, y, p.getZ(i) * ridge);
+  }
+  return g;
+}
+
+function branch(len, r, ang, tilt, y) {
+  const g = new THREE.CylinderGeometry(r * 0.5, r, len, 6, 1).translate(0, len / 2, 0);
+  g.rotateZ(tilt).rotateY(ang).translate(0, y, 0);
+  return clean(g);
+}
+
+function treeGeo() {
+  const wood = mergeGeometries([trunk(3.0, 0.34, 0.19, 0.25), branch(1.1, 0.12, 0.6, 0.9, 1.9), branch(0.9, 0.1, 3.4, 0.8, 2.3)]);
+  paint(wood, (x, y) => {
+    const v = 0.55 + Math.min(1, y / 3) * 0.45;
+    return [v, v * 0.95, v * 0.9];
+  });
+  const leaves = canopy(
+    [
+      [1.55, 0.2, 3.9, 0, 1],
+      [1.15, 1.05, 3.3, 0.35, 2],
+      [1.1, -0.95, 3.4, -0.25, 3],
+      [1.0, 0.1, 4.75, -0.55, 4],
+      [0.95, -0.3, 3.5, 1.0, 5],
+      [0.9, 0.45, 3.2, -1.0, 6],
+    ],
+    2.3,
+    5.6,
+  );
+  return [
+    [wood, NM.bark],
+    [leaves, NM.leaf],
+  ];
+}
+
+function pineGeo() {
+  const wood = paint(trunk(2.4, 0.26, 0.14, 0), (x, y) => [0.5 + y * 0.15, 0.48 + y * 0.14, 0.45 + y * 0.12]);
+  wood.translate(0, 0, 0);
+  const tiers = [];
+  const T = [
+    [1.9, 2.2, 1.6],
+    [1.55, 2.0, 2.75],
+    [1.2, 1.8, 3.8],
+    [0.8, 1.5, 4.75],
+  ];
+  T.forEach(([r, h, y], i) => {
+    let g = new THREE.ConeGeometry(r, h, 11, 2);
+    g.deleteAttribute('uv');
+    g = mergeVertices(g);
+    const p = g.attributes.position;
+    for (let k = 0; k < p.count; k++) {
+      const x = p.getX(k);
+      const z = p.getZ(k);
+      const yy = p.getY(k);
+      const a = Math.atan2(z, x);
+      const rim = yy < -h / 2 + 0.01 ? 1 : 0;
+      const j = 1 + Math.sin(a * 7 + i * 2) * 0.1;
+      p.setXYZ(k, x * j, yy - rim * (0.25 + Math.sin(a * 11 + i) * 0.12), z * j);
+    }
+    g.translate(0, y, 0);
+    tiers.push(
+      paint(g, (x, yy, z, nx, ny) => {
+        const local = Math.min(1, Math.max(0, (yy - (y - h / 2)) / h));
+        const v = 0.45 + local * 0.45 + i * 0.07 + Math.max(0, ny) * 0.1;
+        return [v, v, v];
+      }),
+    );
+  });
+  return [
+    [wood, NM.bark],
+    [mergeGeometries(tiers), NM.pine],
+  ];
+}
+
+function rockGeo() {
+  let g = new THREE.IcosahedronGeometry(1, 2);
+  g.deleteAttribute('normal');
+  g.deleteAttribute('uv');
+  g = mergeVertices(g);
+  lumpy(g, 0.22, 2.4, 7);
+  lumpy(g, 0.07, 7.0, 3);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) if (p.getY(i) < -0.2) p.setY(i, -0.2 + (p.getY(i) + 0.2) * 0.25);
+  g.scale(1.3, 0.85, 1.1).translate(0, 0.4, 0);
+  paint(g, (x, y, z, nx, ny) => {
+    const n = Math.sin(x * 5.1 + z * 3.7) * 0.5 + 0.5;
+    const base = 0.16 + n * 0.07 + y * 0.06;
+    const moss = Math.min(1, Math.max(0, (ny - 0.55) * 3)) * (0.6 + n * 0.4);
+    return [base * (1 - moss) + 0.09 * moss, base * (1 - moss) + 0.2 * moss, base * 1.05 * (1 - moss) + 0.04 * moss];
+  });
+  return [[g, NM.rock]];
+}
+
+function bushGeo() {
+  const g = canopy(
+    [
+      [0.75, 0, 0.55, 0, 11],
+      [0.6, 0.55, 0.45, 0.2, 12],
+      [0.6, -0.5, 0.45, -0.25, 13],
+      [0.55, 0.05, 0.85, -0.45, 14],
+    ],
+    0,
+    1.35,
+  );
+  return [[g, NM.bush]];
+}
+
 /** Geometrias dos recursos, já posicionadas (base no chão), por tipo: [geometria, material][] */
 export function nodeParts() {
-  const g = (geo, y) => geo.translate(0, y, 0);
   return {
-    tree: [
-      [g(new THREE.CylinderGeometry(0.22, 0.32, 2.4, 6), 1.2), M.wood],
-      [g(new THREE.IcosahedronGeometry(1.75, 0), 3.5), M.leaf],
-      [new THREE.IcosahedronGeometry(1.1, 0).translate(0.9, 2.8, 0.3), M.leaf],
-    ],
-    pine: [
-      [g(new THREE.CylinderGeometry(0.2, 0.3, 2, 6), 1), M.woodDark],
-      [g(new THREE.ConeGeometry(1.7, 2.8, 7), 3), M.pine],
-      [g(new THREE.ConeGeometry(1.2, 2.4, 7), 4.7), M.pine],
-    ],
-    rock: [[new THREE.IcosahedronGeometry(1, 0).scale(1.25, 0.85, 1.05).translate(0, 0.45, 0), M.rock]],
-    bush: [[new THREE.IcosahedronGeometry(0.85, 0).scale(1.2, 0.8, 1.2).translate(0, 0.5, 0), M.bush]],
+    tree: treeGeo(),
+    pine: pineGeo(),
+    rock: rockGeo(),
+    bush: bushGeo(),
     berries: [[berriesGeo(), M.berry]],
     crystal: [
       [new THREE.OctahedronGeometry(0.6, 0).scale(0.8, 2, 0.8).translate(0, 1.0, 0), M.crystal],

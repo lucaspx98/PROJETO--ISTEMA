@@ -12,6 +12,8 @@ Você naufragou. Com a ajuda do **Capitão Bento** (casaco, barba e perna de pau
 - Combate com mira automática, rolamento para desviar, inimigos que avisam o golpe (círculo vermelho), chefão Golem.
 - Personagens com juntas (ombro, cotovelo, quadril, joelho), rosto, cabelo e roupas; animação de andar, atacar e rolar.
 - Jogo salvo sozinho a cada 8 s.
+- **Gráficos:** céu físico com nascer e pôr do sol, mar com ondas, reflexo e espuma na beira, grama que balança com o vento e abre quando você passa, árvores e pedras orgânicas com vento, luz ambiente vinda do céu, sombras suaves, nuvens, lua, estrelas e vaga-lumes, bloom e correção de cor (`src/gfx.js`).
+- **Qualidade Alto / Médio / Baixo** no menu (🎨). No celular começa em Médio; se o jogo ficar travando, baixa sozinho.
 
 ## Robô de testes
 
@@ -48,6 +50,7 @@ src/
   world.js     simulação pura (terreno, recursos, jogador, inimigos, construções, salvar) — sem 3D
   quests.js    as missões da história
   models.js    modelos 3D feitos por código (personagens, bichos, árvores, construções)
+  gfx.js       céu, mar, grama, terreno, nuvens, pós-processamento e níveis de qualidade
   render.js    cena 3D, câmera em terceira pessoa, animações, partículas, minimapa
   main.js      laço do jogo, joystick/teclado, HUD, menus, anúncios
   audio.js     sons sintetizados e mar

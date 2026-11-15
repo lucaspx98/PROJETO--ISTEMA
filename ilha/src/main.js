@@ -10,7 +10,13 @@ import { Ads } from './ads.js';
 const $ = (id) => document.getElementById(id);
 const canvas = $('c');
 let world = new World(7);
-let view = new View(canvas, world);
+const FOTO = location.search.includes('foto');
+const GFX = ['alto', 'medio', 'baixo'];
+const GFX_NAME = { alto: 'Alto', medio: 'Médio', baixo: 'Baixo' };
+const mobile = matchMedia('(pointer: coarse)').matches;
+const gfx = () => Save.get('gfx') ?? (mobile ? 'medio' : 'alto');
+let view = new View(canvas, world, gfx());
+const fps = { t: 0, n: 0 };
 let mapImg = view.minimap();
 let playing = false;
 let paused = false;
@@ -384,9 +390,26 @@ function loop(now) {
     view.camYaw += dt * 0.08; // menu: câmera girando devagar
   }
   view.frame(dt);
+  watchFps(dt);
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+/** Se o aparelho não aguenta, baixa a qualidade sozinho (só enquanto joga e se o jogador não escolheu). */
+function watchFps(dt) {
+  if (!playing || paused || FOTO || Save.get('gfxManual')) return;
+  fps.t += dt;
+  fps.n++;
+  if (fps.t < 5) return;
+  const rate = fps.n / fps.t;
+  fps.t = fps.n = 0;
+  const i = GFX.indexOf(view.quality);
+  if (rate < 27 && i < GFX.length - 1) {
+    view.setQuality(GFX[i + 1]);
+    Save.set('gfx', GFX[i + 1]);
+    toast(`Gráficos: ${GFX_NAME[GFX[i + 1]]} (mais fluido)`);
+  }
+}
 
 function save() {
   saveT = 0;
@@ -399,8 +422,8 @@ function start(fresh) {
   if (fresh) Save.clearGame();
   const data = fresh ? null : Save.loadGame();
   world = new World(data?.seed ?? 7, data);
-  view.renderer.dispose();
-  view = new View(canvas, world);
+  view.dispose();
+  view = new View(canvas, world, gfx());
   mapImg = view.minimap();
   view.camYaw = Math.PI;
   playing = true;
@@ -438,6 +461,7 @@ function togglePause() {
 function labels() {
   $('btn-sfx').textContent = Save.get('muted') ? '🔇 Sons' : '🔊 Sons';
   $('btn-music').textContent = Save.get('musicOff') ? '🎵 Música: não' : '🎵 Música: sim';
+  $('btn-gfx').textContent = `🎨 Gráficos: ${GFX_NAME[gfx()]}`;
 }
 
 const bind = (id, fn) =>
@@ -449,6 +473,13 @@ bind('btn-new', () => start(true));
 bind('btn-continue', () => start(false));
 bind('btn-sfx', () => {
   Save.set('muted', !Save.get('muted'));
+  labels();
+});
+bind('btn-gfx', () => {
+  const q = GFX[(GFX.indexOf(gfx()) + 1) % GFX.length];
+  Save.set('gfx', q);
+  Save.set('gfxManual', true);
+  view.setQuality(q);
   labels();
 });
 bind('btn-music', () => {
