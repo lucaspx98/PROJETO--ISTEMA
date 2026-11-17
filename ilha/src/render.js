@@ -232,7 +232,9 @@ export class View {
     this.moon.scale.setScalar(55);
     this.clouds = new G.Clouds();
     this.motes = new G.Motes();
-    this.scene.add(this.stars, this.moon, this.clouds.group, this.motes.points);
+    this.birds = new G.Birds();
+    this.smoke = new G.Smoke();
+    this.scene.add(this.stars, this.moon, this.clouds.group, this.motes.points, this.birds.mesh, this.smoke.points);
   }
 
   /** Recalcula o reflexo do céu (luz ambiente) e a cor da névoa quando o sol anda. */
@@ -556,6 +558,11 @@ export class View {
       this.clouds.update(dt, this.camera, tint);
     }
     this.motes.update(T, p, (x, z) => w.t.height(x, z), dark);
+    this.birds.update(dt, T, p, dark);
+    const smokeSrc = [];
+    if (w.builds.fogueira) smokeSrc.push({ x: BUILDS.fogueira.x, y: this.sites.fogueira.g.position.y + 1.4, z: BUILDS.fogueira.z });
+    if (w.builds.cabana) smokeSrc.push({ x: BUILDS.cabana.x - 1.9, y: this.sites.cabana.g.position.y + 4.9, z: BUILDS.cabana.z - 1.4 });
+    this.smoke.update(dt, smokeSrc, dark, this.renderer.domElement.height);
 
     // herói
     const h = this.hero;

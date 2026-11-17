@@ -577,3 +577,106 @@ export function addWind(material, amount = 0.07, from = 1.6) {
   material.customProgramCacheKey = () => `wind${amount}${from}`;
   return material;
 }
+
+// ---------- vida no cenário ----------
+
+/** Bandos de pássaros: um InstancedMesh; as asas batem no shader (gl_InstanceID dá a fase). */
+export class Birds {
+  constructor(flocks = 3, per = 7) {
+    const g = new THREE.BufferGeometry();
+    // corpo fino + duas asas (as pontas das asas sobem e descem)
+    const v = [0, 0, 0.35, 0, 0.04, -0.3, 0, -0.03, -0.3, 0, 0, 0.12, -0.9, 0, -0.05, 0, 0, -0.15, 0, 0, 0.12, 0, 0, -0.15, 0.9, 0, -0.05];
+    g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+    g.computeVertexNormals();
+    const mat = new THREE.MeshBasicMaterial({ color: 0x1c1f26, side: THREE.DoubleSide });
+    this.uTime = { value: 0 };
+    mat.onBeforeCompile = (s) => {
+      s.uniforms.uTime = this.uTime;
+      s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nuniform float uTime;').replace(
+        '#include <begin_vertex>',
+        '#include <begin_vertex>\nfloat fl = sin(uTime * 9.0 + float(gl_InstanceID) * 1.7);\ntransformed.y += abs(position.x) * fl * 0.55;',
+      );
+    };
+    this.n = flocks * per;
+    this.mesh = new THREE.InstancedMesh(g, mat, this.n);
+    this.mesh.frustumCulled = false;
+    this.flocks = Array.from({ length: flocks }, (_, i) => ({ a: (i / flocks) * 6.28, r: 60 + i * 35, h: 34 + i * 9, sp: 0.06 + i * 0.015, cx: 0, cz: 0 }));
+    this.off = Array.from({ length: this.n }, (_, i) => [((i % per) - per / 2) * 2.2, Math.sin(i * 3.1) * 1.5, -Math.abs((i % per) - per / 2) * 2.4]);
+    this.per = per;
+    this.m = new THREE.Matrix4();
+    this.q = new THREE.Quaternion();
+    this.v = new THREE.Vector3();
+    this.s = new THREE.Vector3(1.4, 1.4, 1.4);
+  }
+
+  update(dt, T, center, dark) {
+    this.uTime.value = T;
+    this.mesh.visible = dark < 0.6;
+    for (let i = 0; i < this.n; i++) {
+      const f = this.flocks[Math.floor(i / this.per)];
+      if (i % this.per === 0) f.a += dt * f.sp;
+      const a = f.a;
+      const x = center.x + Math.cos(a) * f.r;
+      const z = center.z + Math.sin(a) * f.r;
+      const yaw = Math.atan2(-Math.sin(a), Math.cos(a)); // tangente do círculo
+      this.q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+      const o = this.off[i];
+      this.v.set(o[0], o[1] + Math.sin(T * 0.7 + i) * 0.6, o[2]).applyQuaternion(this.q);
+      this.m.compose(this.v.add(new THREE.Vector3(x, f.h, z)), this.q, this.s);
+      this.mesh.setMatrixAt(i, this.m);
+    }
+    this.mesh.instanceMatrix.needsUpdate = true;
+  }
+}
+
+/** Fumaça (fogueira e chaminé): partículas macias que sobem, abrem e somem. */
+export class Smoke {
+  constructor(n = 48) {
+    this.n = n;
+    const g = new THREE.BufferGeometry();
+    this.pos = new Float32Array(n * 3);
+    this.alpha = new Float32Array(n);
+    this.size = new Float32Array(n);
+    g.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    g.setAttribute('alpha', new THREE.BufferAttribute(this.alpha, 1));
+    g.setAttribute('psize', new THREE.BufferAttribute(this.size, 1));
+    this.mat = new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: new THREE.Color(0.75, 0.75, 0.75) }, uScale: { value: 300 } },
+      vertexShader: 'attribute float alpha; attribute float psize; uniform float uScale; varying float vA; void main() { vA = alpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_PointSize = psize * uScale / -mv.z; gl_Position = projectionMatrix * mv; }',
+      fragmentShader: 'uniform vec3 uColor; varying float vA; void main() { float d = length(gl_PointCoord - 0.5); float a = smoothstep(0.5, 0.0, d) * vA; gl_FragColor = vec4(uColor, a); }',
+      transparent: true,
+      depthWrite: false,
+    });
+    this.points = new THREE.Points(g, this.mat);
+    this.points.frustumCulled = false;
+    this.parts = Array.from({ length: n }, (_, i) => ({ src: -1, t: (i / n) * 4 }));
+  }
+
+  /** sources: lista de {x, y, z, rate}; dark escurece a fumaça à noite. */
+  update(dt, sources, dark, height) {
+    this.mat.uniforms.uColor.value.setScalar(0.78 - dark * 0.55);
+    this.mat.uniforms.uScale.value = height * 0.5;
+    const ns = sources.length;
+    this.points.visible = ns > 0;
+    if (!ns) return;
+    this.parts.forEach((p, i) => {
+      p.t += dt;
+      const life = 4;
+      if (p.t > life || p.src < 0) {
+        p.t = p.src < 0 ? (i / this.n) * life : 0;
+        p.src = i % ns;
+        p.sx = (Math.random() - 0.5) * 0.3;
+        p.sz = (Math.random() - 0.5) * 0.3;
+      }
+      const s = sources[p.src % ns];
+      const k = p.t / life;
+      this.pos.set([s.x + p.sx + k * 2.2 + Math.sin(p.t * 1.3 + i) * 0.3 * k, s.y + k * 5.5, s.z + p.sz + k * 0.8], i * 3);
+      this.alpha[i] = Math.sin(Math.PI * Math.min(1, k * 1.2)) * 0.45;
+      this.size[i] = 0.6 + k * 2.6;
+    });
+    const g = this.points.geometry.attributes;
+    g.position.needsUpdate = true;
+    g.alpha.needsUpdate = true;
+    g.psize.needsUpdate = true;
+  }
+}
