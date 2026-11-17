@@ -55,6 +55,14 @@ const NM = {
   bush: addWind(vmat(0x4c9a3a, { roughness: 0.8 }), 0.05, 0.3),
 };
 NM.leaf.userData.vary = NM.pine.userData.vary = NM.bush.userData.vary = true;
+const PLANK = mat(0x9a6a40);
+const THATCH = mat(0xc9a35a, { roughness: 1 });
+const THATCH_DARK = mat(0xa9843f, { roughness: 1 });
+const CHIMNEY = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, flatShading: true, roughness: 0.95 });
+const FIRE_STONE = CHIMNEY;
+const ANVIL = mat(0x3a3d42, { metalness: 0.6, roughness: 0.45 });
+const WINDOW = mat(0xffc477, { emissive: 0xff9a3a, emissiveIntensity: 1.1 });
+const FLAME_IN = mat(0xfff0a0, { emissive: 0xffd040, emissiveIntensity: 3 });
 
 /** Deforma cada vértice por um "ruído" que só depende da posição (as costuras não abrem). */
 function lumpy(geo, amt, freq, seed) {
@@ -462,13 +470,32 @@ export function weapon(level) {
 
 export function slime() {
   const root = new THREE.Group();
-  const body = mesh(new THREE.IcosahedronGeometry(0.75, 1), M.slime.clone(), 0, 0.6, 0);
-  body.scale.set(1, 0.8, 1);
+  // gelatina: brilhante, meio transparente, com um "miolo" mais escuro dentro
+  const g = new THREE.SphereGeometry(0.78, 28, 20);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i);
+    if (y < -0.2) p.setY(i, -0.2 + (y + 0.2) * 0.3);
+    else p.setY(i, y * 1.05); // topo um pouco mais alto
+  }
+  g.computeVertexNormals();
+  const jelly = new THREE.MeshStandardMaterial({ color: 0x6fdc5a, roughness: 0.12, metalness: 0, transparent: true, opacity: 0.8, emissive: 0x1d6a12, emissiveIntensity: 0.6 });
+  const body = new THREE.Mesh(g, jelly);
+  body.position.y = 0.62;
+  body.castShadow = true;
   root.add(body);
-  [-0.22, 0.22].forEach((x) => {
-    root.add(mesh(new THREE.SphereGeometry(0.13, 6, 5), M.white, x, 0.8, 0.58));
-    root.add(mesh(new THREE.SphereGeometry(0.07, 6, 5), M.eye, x, 0.8, 0.69));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.36, 14, 10), new THREE.MeshStandardMaterial({ color: 0x2f8a26, roughness: 0.5 }));
+  core.position.set(0, -0.08, -0.05);
+  body.add(core);
+  // carinha: olhos grandes com brilho e boquinha
+  [-0.24, 0.24].forEach((x) => {
+    body.add(mesh(new THREE.SphereGeometry(0.15, 12, 10), M.white, x, 0.2, 0.62));
+    body.add(mesh(new THREE.SphereGeometry(0.085, 10, 8), M.eye, x, 0.2, 0.74));
+    body.add(mesh(new THREE.SphereGeometry(0.03, 6, 5), new THREE.MeshBasicMaterial({ color: 0xffffff }), x + 0.03, 0.25, 0.81));
   });
+  const mouth = mesh(new THREE.TorusGeometry(0.09, 0.022, 6, 12, Math.PI), M.eye, 0, 0.02, 0.73);
+  mouth.rotation.z = Math.PI;
+  body.add(mouth);
   return { root, body };
 }
 
@@ -511,12 +538,16 @@ export function bakeRig(root, { keep = [], material = RIG } = {}) {
       const geos = meshes.map((c) => {
         c.updateMatrix();
         let geo = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
-        for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal') geo.deleteAttribute(k);
+        const painted = c.material.vertexColors && geo.attributes.color; // pedra já pintada nos vértices
+        for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal' && k !== 'color') geo.deleteAttribute(k);
         geo.applyMatrix4(c.matrix);
         const n = geo.attributes.position.count;
         const col = new Float32Array(n * 3);
         const cc = c.material.color;
-        for (let i = 0; i < n; i++) col.set([cc.r, cc.g, cc.b], i * 3);
+        for (let i = 0; i < n; i++) {
+          const k = painted ? [geo.attributes.color.getX(i), geo.attributes.color.getY(i), geo.attributes.color.getZ(i)] : [1, 1, 1];
+          col.set([cc.r * k[0], cc.g * k[1], cc.b * k[2]], i * 3);
+        }
         geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
         return geo;
       });
@@ -649,53 +680,141 @@ export function buildSiteMarker() {
 
 export function fogueira() {
   const g = new THREE.Group();
-  for (let i = 0; i < 7; i++) {
-    const a = (i / 7) * Math.PI * 2;
-    g.add(mesh(new THREE.IcosahedronGeometry(0.28, 0), M.rock, Math.cos(a) * 0.85, 0.15, Math.sin(a) * 0.85));
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const st = mesh(stone(0.3, 40 + i, 1.1, 0.8, 1, 0.2), FIRE_STONE, Math.cos(a) * 0.9, 0.14, Math.sin(a) * 0.9);
+    st.rotation.y = a;
+    g.add(st);
   }
-  for (let i = 0; i < 3; i++) {
-    const log = mesh(new THREE.CylinderGeometry(0.11, 0.11, 1.2, 5), M.woodDark, 0, 0.3, 0);
-    log.rotation.set(Math.PI / 2 - 0.5, (i / 3) * Math.PI * 2, 0, 'YXZ');
+  for (let i = 0; i < 4; i++) {
+    const log = mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.3, 7), M.woodDark, 0, 0.32, 0);
+    log.rotation.set(Math.PI / 2 - 0.55, (i / 4) * Math.PI * 2 + 0.3, 0, 'YXZ');
     g.add(log);
   }
-  const flame = mesh(new THREE.ConeGeometry(0.42, 1.2, 6), M.fire, 0, 0.85, 0);
-  flame.castShadow = false;
+  // brasas na base + chama em duas camadas (laranja por fora, amarela por dentro)
+  g.add(mesh(new THREE.CylinderGeometry(0.5, 0.55, 0.12, 10), M.core, 0, 0.08, 0));
+  const flame = new THREE.Group();
+  const outer = mesh(new THREE.ConeGeometry(0.42, 1.25, 8, 3, true), M.fire, 0, 0.85, 0);
+  const inner = mesh(new THREE.ConeGeometry(0.24, 0.85, 8), FLAME_IN, 0, 0.7, 0);
+  outer.castShadow = inner.castShadow = false;
+  flame.add(outer, inner);
   const light = new THREE.PointLight(0xff8a3a, 30, 22, 1.6);
   light.position.y = 1.6;
   g.add(flame, light);
+  bakeRig(g);
   g.userData = { flame, light };
   return g;
 }
 
 export function bancada() {
   const g = new THREE.Group();
-  g.add(box(2.4, 0.16, 1.1, M.wood, 0, 1, 0));
-  [[-1, -0.4], [1, -0.4], [-1, 0.4], [1, 0.4]].forEach(([x, z]) => g.add(box(0.16, 1, 0.16, M.woodDark, x, 0.5, z)));
-  g.add(box(0.5, 0.3, 0.4, M.metal, -0.6, 1.23, 0), box(0.1, 0.1, 0.8, M.woodDark, 0.5, 1.13, 0.1), box(0.3, 0.2, 0.2, M.rock, 0.5, 1.18, -0.3));
+  // tampo de tábuas grossas, pernas com travessas
+  for (let i = 0; i < 4; i++) g.add(box(2.5, 0.14, 0.27, i % 2 ? M.wood : PLANK, 0, 1.0, -0.42 + i * 0.28));
+  [[-1.05, -0.4], [1.05, -0.4], [-1.05, 0.4], [1.05, 0.4]].forEach(([x, z]) => g.add(box(0.16, 1, 0.16, M.woodDark, x, 0.5, z)));
+  g.add(box(2.1, 0.1, 0.1, M.woodDark, 0, 0.3, -0.4), box(2.1, 0.1, 0.1, M.woodDark, 0, 0.3, 0.4));
+  // morsa, martelo, serrote e bigorna
+  g.add(box(0.3, 0.25, 0.35, M.metal, -0.85, 1.2, 0.25), box(0.1, 0.1, 0.5, M.metal, -0.85, 1.15, 0.5));
+  const handle = mesh(new THREE.CylinderGeometry(0.035, 0.04, 0.6, 6), M.wood, 0.2, 1.1, 0.15);
+  handle.rotation.z = Math.PI / 2;
+  g.add(handle, box(0.12, 0.13, 0.26, M.metal, 0.5, 1.13, 0.15));
+  const saw = box(0.75, 0.22, 0.02, M.metal, -0.1, 1.09, -0.25);
+  saw.rotation.x = -Math.PI / 2;
+  g.add(saw, box(0.22, 0.12, 0.05, M.woodDark, 0.32, 1.1, -0.25));
+  g.add(box(0.7, 0.28, 0.32, ANVIL, 1.75, 0.75, 0.1), box(0.38, 0.5, 0.28, ANVIL, 1.75, 0.35, 0.1), box(0.6, 0.12, 0.45, ANVIL, 1.75, 0.06, 0.1));
+  // lenha empilhada
+  for (let i = 0; i < 5; i++) {
+    const l = mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.9, 7), i % 2 ? M.wood : M.woodDark, -1.75 + (i % 3) * 0.27 - (i > 2 ? -0.13 : 0), 0.14 + (i > 2 ? 0.24 : 0), 0);
+    l.rotation.x = Math.PI / 2;
+    g.add(l);
+  }
+  bakeRig(g);
   return g;
 }
 
 export function cabana() {
   const g = new THREE.Group();
-  g.add(box(5, 2.6, 4.2, M.wood, 0, 1.3, 0));
-  const roof = mesh(new THREE.ConeGeometry(4.3, 2.2, 4), M.red, 0, 3.7, 0);
-  roof.rotation.y = Math.PI / 4;
-  roof.scale.set(1, 1, 0.85);
-  g.add(roof, box(1.1, 1.9, 0.12, M.woodDark, 0, 0.95, 2.14), box(0.9, 0.8, 0.1, M.crystal, 1.6, 1.6, 2.13));
+  const W = 5;
+  const D = 4.2;
+  const r = 0.19;
+  // paredes de toras: frente/trás e laterais intercaladas, com pontas sobrando nos cantos
+  for (let row = 0; row < 7; row++) {
+    const y = 0.2 + row * r * 1.9;
+    const side = row % 2;
+    const mat = row % 3 === 0 ? M.woodDark : M.wood;
+    [-1, 1].forEach((sd) => {
+      if (side === 0) {
+        const lg = mesh(new THREE.CylinderGeometry(r, r, W + 0.6, 8), mat, 0, y, sd * D / 2);
+        lg.rotation.z = Math.PI / 2;
+        g.add(lg);
+      } else {
+        const lg = mesh(new THREE.CylinderGeometry(r, r, D + 0.6, 8), mat, sd * W / 2, y + r * 0.95, 0);
+        lg.rotation.x = Math.PI / 2;
+        g.add(lg);
+      }
+    });
+  }
+  // empenas (triângulos de tábua) na frente e atrás
+  const tri = new THREE.Shape([new THREE.Vector2(-W / 2, 0), new THREE.Vector2(W / 2, 0), new THREE.Vector2(0, 1.7)]);
+  [-1, 1].forEach((sd) => {
+    const gable = mesh(new THREE.ExtrudeGeometry(tri, { depth: 0.2, bevelEnabled: false }), PLANK, 0, 2.75, sd * (D / 2) - 0.1);
+    g.add(gable);
+  });
+  // telhado de palha em 3 fileiras de cada lado + cumeeira
+  const ang = Math.atan2(1.7, W / 2);
+  const len = Math.hypot(1.7, W / 2) + 0.5;
+  [-1, 1].forEach((sd) => {
+    for (let k = 0; k < 3; k++) {
+      const t = (k + 0.5) / 3;
+      const strip = box(len / 3 + 0.25, 0.22, D + 1.0, k % 2 ? THATCH : THATCH_DARK, sd * (W / 2 + 0.25) * (1 - t), 2.72 + 1.75 * t, 0);
+      strip.rotation.z = -sd * ang;
+      g.add(strip);
+    }
+  });
+  const ridge = mesh(new THREE.CylinderGeometry(0.17, 0.17, D + 1.1, 8), M.woodDark, 0, 4.5, 0);
+  ridge.rotation.x = Math.PI / 2;
+  g.add(ridge);
+  // porta com moldura, janela acesa, chaminé de pedra e varanda
+  g.add(box(1.0, 1.8, 0.1, PLANK, 0, 0.95, D / 2 + 0.17), box(1.2, 0.12, 0.16, M.woodDark, 0, 1.9, D / 2 + 0.18));
+  g.add(box(0.06, 0.06, 0.06, M.gold, 0.32, 0.95, D / 2 + 0.24));
+  g.add(box(0.9, 0.7, 0.06, WINDOW, 1.55, 1.5, D / 2 + 0.17), box(1.05, 0.1, 0.12, M.woodDark, 1.55, 1.9, D / 2 + 0.2), box(1.05, 0.1, 0.14, M.woodDark, 1.55, 1.12, D / 2 + 0.22));
+  for (let i = 0; i < 4; i++) g.add(mesh(stone(0.42 - i * 0.04, 60 + i, 1.1, 0.75, 1.1, 0.1), CHIMNEY, -W / 2 + 0.6, 0.4 + i * 0.95, -D / 2 + 0.7));
+  g.add(mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.9, 8), M.rockDark, -W / 2 + 0.6, 4.3, -D / 2 + 0.7));
+  for (let i = 0; i < 6; i++) g.add(box(0.36, 0.08, 1.2, i % 2 ? PLANK : M.wood, -1.0 + i * 0.4, 0.06, D / 2 + 0.8));
+  bakeRig(g);
   return g;
 }
 
 /** Barco: quebrado (sem mastro, inclinado) ou consertado (com vela). */
 export function barco(fixed) {
   const g = new THREE.Group();
-  const hull = mesh(new THREE.CylinderGeometry(1.5, 0.9, 6, 6, 1, false, 0, Math.PI), M.wood, 0, 0.7, 0);
-  hull.rotation.set(0, 0, Math.PI / 2, 'XYZ');
-  hull.rotation.y = Math.PI / 2;
-  g.add(hull, box(2.4, 0.14, 5.4, M.woodDark, 0, 0.95, 0));
+  // casco: meia esfera alongada, aberta em cima, com borda e bancos
+  const hg = new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2);
+  hg.scale(1.3, 0.95, 3.2);
+  const hull = new THREE.Mesh(hg, new THREE.MeshStandardMaterial({ color: 0x7a5232, roughness: 0.85, side: THREE.DoubleSide }));
+  hull.position.y = 1.0;
+  hull.castShadow = true;
+  g.add(hull);
+  const rim = mesh(new THREE.TorusGeometry(1, 0.08, 6, 28), M.woodDark, 0, 1.0, 0);
+  rim.rotation.x = Math.PI / 2;
+  rim.scale.set(1.3, 3.2, 1);
+  g.add(rim);
+  for (let k = -1; k <= 1; k++) g.add(box(2.3, 0.1, 0.4, PLANK, 0, 0.75, k * 1.3));
   if (fixed) {
-    g.add(mesh(new THREE.CylinderGeometry(0.1, 0.12, 5, 6), M.woodDark, 0, 3.4, 0.3));
-    const sail = mesh(new THREE.PlaneGeometry(2.8, 3), new THREE.MeshStandardMaterial({ color: 0xf4ead2, side: THREE.DoubleSide, flatShading: true }), 0, 3.9, 0.36);
-    g.add(sail, mesh(new THREE.IcosahedronGeometry(0.3, 0), M.core, 0, 1.3, -1.6));
+    g.add(mesh(new THREE.CylinderGeometry(0.09, 0.12, 5.2, 8), M.woodDark, 0, 3.3, 0.4));
+    g.add(mesh(new THREE.CylinderGeometry(0.06, 0.06, 2.6, 6).rotateZ(Math.PI / 2), M.woodDark, 0, 2.0, 0.55));
+    // vela curva (bojuda com o vento)
+    const sg = new THREE.PlaneGeometry(2.6, 3.0, 8, 8);
+    const sp = sg.attributes.position;
+    for (let i = 0; i < sp.count; i++) {
+      const x = sp.getX(i);
+      const y = sp.getY(i);
+      sp.setZ(i, (1 - (x / 1.3) ** 2) * (1 - ((y - 0.2) / 1.7) ** 2) * 0.45);
+    }
+    sg.computeVertexNormals();
+    const sail = new THREE.Mesh(sg, new THREE.MeshStandardMaterial({ color: 0xf1e6cc, side: THREE.DoubleSide, roughness: 0.9 }));
+    sail.position.set(0, 3.55, 0.55);
+    sail.castShadow = true;
+    g.add(sail, mesh(new THREE.IcosahedronGeometry(0.3, 1), M.core, 0, 1.2, -1.9));
   } else {
     g.rotation.z = 0.28;
     g.position.y = -0.2;
