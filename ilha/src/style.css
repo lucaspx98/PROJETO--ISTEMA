@@ -90,3 +90,9 @@ body.foto #hud, body.foto .screen { display: none !important; }
 #daily li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; }
 #daily li small { opacity: .6; font-weight: 600; } #daily li.ok span { opacity: .5; text-decoration: line-through; }
 #daily li em { font-style: normal; color: #a86a00; font-weight: 900; white-space: nowrap; } #daily li.ok em { color: #2f9e44; }
+
+/* celular em pé: a missão desce para baixo da vida e ocupa a largura livre */
+@media (orientation: portrait) {
+  #quest { left: var(--left); top: calc(var(--top) + 84px); transform: none; max-width: calc(100vw - 2 * var(--left) - 110px); }
+  #dialog { bottom: calc(var(--bottom) + 130px); }
+}
