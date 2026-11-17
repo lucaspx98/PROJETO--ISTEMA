@@ -10,12 +10,14 @@ import { Ads } from './ads.js';
 const $ = (id) => document.getElementById(id);
 const canvas = $('c');
 let world = new World(7);
+world.clock = 212; // menu: fim de tarde, luz dourada
 const FOTO = location.search.includes('foto');
 const GFX = ['alto', 'medio', 'baixo'];
 const GFX_NAME = { alto: 'Alto', medio: 'Médio', baixo: 'Baixo' };
 const mobile = matchMedia('(pointer: coarse)').matches;
 const gfx = () => Save.get('gfx') ?? (mobile ? 'medio' : 'alto');
 let view = new View(canvas, world, gfx());
+menuCamera();
 const fps = { t: 0, n: 0 };
 let mapImg = view.minimap();
 let playing = false;
@@ -391,7 +393,7 @@ function loop(now) {
     saveT += dt;
     if (saveT > 8) save();
   } else if (!playing) {
-    view.camYaw += dt * 0.08; // menu: câmera girando devagar
+    view.camYaw += dt * 0.05; // menu: câmera girando devagar
   }
   view.frame(dt);
   watchFps(dt);
@@ -413,6 +415,13 @@ function watchFps(dt) {
     Save.set('gfx', GFX[i + 1]);
     toast(`Gráficos: ${GFX_NAME[GFX[i + 1]]} (mais fluido)`);
   }
+}
+
+/** Câmera de abertura: alta, girando devagar em volta do acampamento, mostrando o mar. */
+function menuCamera() {
+  view.camDist = 34;
+  view.camPitch = 0.36;
+  view.camYaw = 2.3;
 }
 
 function save() {
@@ -450,6 +459,7 @@ function openMenu() {
   sea = null;
   ['hud', 'pause', 'death', 'ending'].forEach((id) => $(id).classList.add('hidden'));
   $('menu').classList.remove('hidden');
+  menuCamera();
   $('btn-continue').classList.toggle('hidden', !Save.loadGame());
   labels();
   Ads.showBanner();

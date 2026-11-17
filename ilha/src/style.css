@@ -52,9 +52,9 @@ button { font-family: inherit; }
 @keyframes fl { to { transform: translate(-50%, -190%); opacity: 0; } }
 
 .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 6vh 20px calc(var(--bottom) + 70px);
-  background: linear-gradient(rgba(10,30,50,.15), rgba(10,30,50,.45)); }
+  background: linear-gradient(rgba(6,18,32,.55) 0%, rgba(6,18,32,.08) 32%, rgba(6,18,32,.08) 58%, rgba(6,18,32,.6) 100%); }
 .logo { text-align: center; }
-.logo h1 { margin: 0; font-size: clamp(46px, 11vw, 84px); font-weight: 900; color: #fff; text-shadow: 0 5px 0 #1f6f43, 0 10px 26px rgba(0,0,0,.4); }
+.logo h1 { margin: 0; font-size: clamp(46px, 11vw, 84px); font-weight: 900; letter-spacing: 1px; color: #fff8e6; text-shadow: 0 4px 0 #b4581f, 0 8px 0 #6e2f10, 0 14px 30px rgba(0,0,0,.55); }
 .logo p { margin: 8px 0 0; font-weight: 800; font-size: 18px; text-shadow: 0 2px 4px rgba(0,0,0,.6); }
 .menu-btns { display: flex; flex-direction: column; gap: 12px; align-items: center; }
 .row { display: flex; gap: 10px; }

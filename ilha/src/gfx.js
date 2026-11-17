@@ -60,6 +60,9 @@ export function heightField(world, biomeColor, N = 257) {
         const d = Math.hypot(x - b.x, z - b.z);
         g *= b === CAMP ? 0.35 + 0.65 * sm(6, 11, d) : sm(2, 4.5, d);
       }
+      // chão com grama fica um pouco mais escuro: a borda do círculo de grama some
+      col.multiplyScalar(1 - 0.2 * g);
+      colors.set([col.r, col.g, col.b], k * 3);
       hf[k * 4] = THREE.DataUtils.toHalfFloat(h);
       hf[k * 4 + 1] = THREE.DataUtils.toHalfFloat(g);
       hf[k * 4 + 2] = 0;

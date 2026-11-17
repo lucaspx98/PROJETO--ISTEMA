@@ -550,6 +550,7 @@ export class View {
     wm.uDeep.value.set(0x063a5a).lerp(C(0x02101e), dark);
     wm.uShallow.value.set(0x1fb8b0).lerp(C(0x0a3040), dark);
     this.grass.update(T, p, this.camera);
+    this.grass.mesh.visible = this.Q.grass > 0 && this.camDist < 25; // de longe (menu) a grama não aparece
     if (this.Q.clouds) {
       const tint = C(0xffffff).lerp(C(0xffb48a), low * (1 - dark)).multiplyScalar(3.2 * (1 - dark) + 0.15);
       this.clouds.update(dt, this.camera, tint);
