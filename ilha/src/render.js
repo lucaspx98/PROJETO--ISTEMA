@@ -458,7 +458,7 @@ export class View {
   }
 
   ring(x, z, radius, time, color = 0xff3b3b) {
-    const m = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false }));
+    const m = new THREE.Mesh((this.ringGeo ??= new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2)), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false }));
     m.position.set(x, this.w.t.height(x, z) + 0.25, z);
     this.scene.add(m);
     this.rings.push({ m, radius, time, t: 0 });
@@ -666,6 +666,10 @@ export class View {
     for (const [id, m] of this.enemyMeshes) {
       if (!seen.has(id)) {
         this.scene.remove(m.root);
+        // libera a memória da placa de vídeo (cada inimigo tem geometrias e materiais próprios)
+        m.root.traverse((o) => o.geometry?.dispose());
+        (m.mats ?? []).forEach((mt) => mt.dispose()); // só os materiais próprios deste inimigo
+        if (m.kind === 'slime') m.body.material.dispose();
         this.enemyMeshes.delete(id);
       }
     }
@@ -676,7 +680,7 @@ export class View {
       shots.add(s.id);
       let m = this.shotMeshes.get(s.id);
       if (!m) {
-        m = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 0), Mo.MATS.rockDark);
+        m = new THREE.Mesh((this.shotGeo ??= new THREE.DodecahedronGeometry(0.8, 0)), Mo.MATS.rockDark);
         m.castShadow = true;
         this.scene.add(m);
         this.shotMeshes.set(s.id, m);
@@ -752,6 +756,7 @@ export class View {
       g.m.material.opacity = 0.4 + 0.5 * k;
       if (g.t > g.time + 0.1) {
         this.scene.remove(g.m);
+        g.m.material.dispose();
         this.rings.splice(i, 1);
       }
     }

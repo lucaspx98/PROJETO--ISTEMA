@@ -15,6 +15,9 @@ Você naufragou. Com a ajuda do **Capitão Bento** (casaco, barba e perna de pau
 - **Desafios do dia** (na pausa): 3 tarefas que mudam todo dia, com moedas de prêmio, para voltar à ilha depois de zerar.
 - Jogo salvo sozinho a cada 8 s.
 - **Gráficos:** céu físico com nascer e pôr do sol, mar com ondas, reflexo e espuma na beira, grama que balança com o vento e abre quando você passa, árvores e pedras orgânicas com vento, luz ambiente vinda do céu, sombras suaves, nuvens, lua, estrelas e vaga-lumes, bloom e correção de cor (`src/gfx.js`).
+- **Combate com peso:** rastro brilhante da arma, tremor de câmera, congelamento curtinho no impacto, poeira ao correr e rolar.
+- **Vida no cenário:** pássaros em bando, fumaça da fogueira e da chaminé, vaga-lumes à noite, flocos de neve e brilho na neve no topo.
+- **Otimização:** árvores e pedras com versão detalhada (perto), leve (longe) e de sombra; só é desenhado o que a câmera vê; personagens com as peças juntas em poucas malhas; sem leitura de pixels da placa de vídeo. Na fogueira: ~0,74 mi de triângulos e ~110 desenhos por quadro no Alto.
 - **Qualidade Alto / Médio / Baixo** no menu (🎨). No celular começa em Médio; se o jogo ficar travando, baixa sozinho.
 
 ## Robô de testes
