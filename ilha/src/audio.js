@@ -138,3 +138,63 @@ export function setAdPlaying(on) {
   if (on) ctx.suspend();
   else ctx.resume();
 }
+
+/** Passo: grama (abafado), areia (chiado), neve (crocante), pedra (seco). */
+export function step(surface) {
+  if (surface === 'sand') hiss(0.09, 0.07, 2600, 0.8, 'highpass');
+  else if (surface === 'snow') hiss(0.11, 0.09, 1600, 1.5);
+  else if (surface === 'rock') tone(150, 0.05, 'triangle', 0.05, 110);
+  else hiss(0.08, 0.06, 700, 0.9);
+}
+
+/**
+ * Som ambiente: pássaros de dia, grilos à noite, vento no alto da montanha e
+ * estalos da fogueira. Tudo sintetizado, poucas notas por segundo.
+ */
+export function ambience() {
+  const a = ac();
+  if (!a || Save.get('muted')) return { update() {}, stop() {} };
+  // vento: ruído filtrado em loop, volume pela altura
+  const s = a.createBufferSource();
+  s.buffer = noise(a);
+  s.loop = true;
+  const f = a.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.value = 420;
+  f.Q.value = 0.5;
+  const g = a.createGain();
+  g.gain.value = 0.0001;
+  s.connect(f).connect(g).connect(a.destination);
+  s.start();
+  let birdT = 2;
+  let cricketT = 1;
+  let fireT = 0.3;
+  return {
+    update(dt, { night, height, nearFire, beach }) {
+      const t = a.currentTime;
+      const wind = Math.min(1, Math.max(0, (height - 18) / 20));
+      g.gain.setTargetAtTime(Math.max(0.0001, wind * 0.09 * (0.6 + 0.4 * Math.sin(t * 0.4))), t, 0.5);
+      f.frequency.setTargetAtTime(380 + Math.sin(t * 0.23) * 160, t, 0.8);
+      birdT -= dt;
+      if (!night && !beach && height < 26 && birdT <= 0) {
+        birdT = 2.5 + Math.random() * 5;
+        const base = 2200 + Math.random() * 1600;
+        const n = 2 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < n; i++) tone(base, 0.09, 'sine', 0.018, base * (1.2 + Math.random() * 0.3), i * 0.13);
+      }
+      cricketT -= dt;
+      if (night && height < 24 && cricketT <= 0) {
+        cricketT = 0.9 + Math.random() * 1.6;
+        for (let i = 0; i < 4; i++) tone(4400, 0.025, 'square', 0.006, null, i * 0.05);
+      }
+      fireT -= dt;
+      if (nearFire > 0 && fireT <= 0) {
+        fireT = 0.08 + Math.random() * 0.35;
+        hiss(0.03, 0.12 * nearFire, 2500 + Math.random() * 2000, 3);
+      }
+    },
+    stop() {
+      s.stop();
+    },
+  };
+}

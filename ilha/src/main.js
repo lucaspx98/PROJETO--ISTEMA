@@ -3,7 +3,7 @@ import { World, BUILDS, CAMP, HALF, NPC } from './world.js';
 import { QUESTS } from './quests.js';
 import { View } from './render.js';
 import { Save } from './storage.js';
-import { Sfx, seaLoop } from './audio.js';
+import { Sfx, seaLoop, ambience, step } from './audio.js';
 import { Music } from './music.js';
 import { Ads } from './ads.js';
 
@@ -24,6 +24,8 @@ let mapImg = view.minimap();
 let playing = false;
 let paused = false;
 let sea = null;
+let amb = null;
+const walk = { x: 0, z: 0, d: 0 };
 let saveT = 0;
 let hitStop = 0; // congelamento curtinho no impacto (dá peso ao golpe)
 const input = { mx: 0, mz: 0, attack: false, roll: false, interact: false, eat: false };
@@ -391,6 +393,7 @@ function loop(now) {
     updateHud();
     const h = world.player.y;
     sea?.set(Math.max(0, 1 - h / 9));
+    ambientSounds(dt);
     saveT += dt;
     if (saveT > 8) save();
   } else if (!playing) {
@@ -407,6 +410,24 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);
+
+/** Passos conforme o chão e o som ambiente (pássaros, grilos, vento, fogueira). */
+function ambientSounds(dt) {
+  const p = world.player;
+  const moved = Math.hypot(p.x - walk.x, p.z - walk.z);
+  walk.x = p.x;
+  walk.z = p.z;
+  if (p.moving && !p.dead && p.rollT <= 0 && moved < 2) {
+    walk.d += moved;
+    if (walk.d > 1.7) {
+      walk.d = 0;
+      step(p.y < 1.8 ? 'sand' : p.y > 37 ? 'snow' : p.y > 26 ? 'rock' : 'grass');
+    }
+  }
+  const fire = BUILDS.fogueira;
+  const fd = Math.hypot(p.x - fire.x, p.z - fire.z);
+  amb?.update(dt, { night: world.night, height: p.y, beach: p.y < 2.5, nearFire: world.builds.fogueira ? Math.max(0, 1 - fd / 12) : 0 });
+}
 
 /** Se o aparelho não aguenta, baixa a qualidade sozinho (só enquanto joga e se o jogador não escolheu). */
 function watchFps(dt) {
@@ -456,6 +477,8 @@ function start(fresh) {
   Music.start();
   sea?.stop();
   sea = seaLoop();
+  amb?.stop();
+  amb = ambience();
   if (!data) dialog(NPC.name, 'Ei, você aí! Venha cá, náufrago! (Use o joystick à esquerda para andar e siga a seta amarela.)');
 }
 
@@ -464,6 +487,8 @@ function openMenu() {
   if (world.stats.time > 1) save();
   sea?.stop();
   sea = null;
+  amb?.stop();
+  amb = null;
   ['hud', 'pause', 'death', 'ending'].forEach((id) => $(id).classList.add('hidden'));
   $('menu').classList.remove('hidden');
   menuCamera();
