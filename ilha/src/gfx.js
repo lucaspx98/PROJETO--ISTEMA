@@ -11,8 +11,8 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { BUILDS, CAMP, HALF } from './world.js';
 
 export const QUALITY = {
-  alto: { ratio: 1.75, post: true, msaa: 4, grass: 70000, grassR: 30, shadow: 2048, clouds: true, near: 70, far: 400 },
-  medio: { ratio: 1.25, post: true, msaa: 0, grass: 26000, grassR: 22, shadow: 1024, clouds: true, near: 50, far: 320 },
+  alto: { ratio: 1.75, post: true, msaa: 4, grass: 55000, grassR: 30, shadow: 2048, clouds: true, near: 70, far: 400 },
+  medio: { ratio: 1.25, post: true, msaa: 0, grass: 20000, grassR: 22, shadow: 1024, clouds: true, near: 50, far: 320 },
   baixo: { ratio: 1.0, post: false, msaa: 0, grass: 0, grassR: 0, shadow: 1024, clouds: false, near: 35, far: 240 },
 };
 
@@ -114,7 +114,9 @@ export function terrainMaterial() {
         diffuseColor.rgb *= 1.0 - sand * (0.09 * sin(vWP.x * 3.1 + vWP.z * 1.3 + n2 * 3.0) + 0.12 * n3 + 0.1);
         diffuseColor.rgb *= mix(0.55, 1.0, smoothstep(-0.3, 0.7, vWP.y));`,
       )
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.35, roughnessFactor, smoothstep(-0.3, 0.6, vWP.y));');
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.35, roughnessFactor, smoothstep(-0.3, 0.6, vWP.y));')
+      // terra seca quase não reflete o céu (sem isso, morros vistos de lado ficavam com um véu azulado)
+      .replace('#include <aomap_fragment>', 'reflectedLight.indirectSpecular *= mix(0.6, 0.08, smoothstep(-0.3, 0.6, vWP.y));\n#include <aomap_fragment>');
   };
   return m;
 }
@@ -124,7 +126,7 @@ export function terrainMaterial() {
 /** Grama na GPU: as folhas ficam presas ao mundo e "dão a volta" ao redor do jogador. */
 export class Grass {
   constructor(field, max) {
-    const seg = 4;
+    const seg = 3;
     const pos = [];
     const idx = [];
     for (let i = 0; i <= seg; i++) {
@@ -158,7 +160,8 @@ export class Grass {
       uTime: { value: 0 },
       uR: { value: 30 },
     };
-    const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.85, side: THREE.DoubleSide });
+    // Lambert: luz mais barata que a PBR (a grama é o que mais pesa na tela)
+    const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
     mat.onBeforeCompile = (s) => {
       Object.assign(s.uniforms, this.uniforms);
       s.vertexShader = s.vertexShader
@@ -209,9 +212,14 @@ export class Grass {
     this.mesh.visible = count > 0;
   }
 
-  update(T, p) {
+  /** O quadrado de grama fica à frente da câmera: nada é gasto com o que está atrás dela. */
+  update(T, p, cam) {
     this.uniforms.uTime.value = T;
-    this.uniforms.uCenter.value.set(p.x, 0, p.z);
+    const R = this.uniforms.uR.value;
+    const fx = p.x - cam.position.x;
+    const fz = p.z - cam.position.z;
+    const fl = Math.hypot(fx, fz) || 1;
+    this.uniforms.uCenter.value.set(p.x + (fx / fl) * R * 0.5, 0, p.z + (fz / fl) * R * 0.5);
     this.uniforms.uPlayer.value.set(p.x, p.y, p.z);
   }
 }
@@ -341,6 +349,50 @@ export function makeSky() {
     .replace('gl_FragColor = vec4( retColor, 1.0 );', 'vec3 sc = retColor * uGain; float sl = dot(sc, vec3(0.299, 0.587, 0.114)); gl_FragColor = vec4(max(mix(vec3(sl), sc, 1.3), 0.0), 1.0 );');
   sky.material.fog = false;
   return sky;
+}
+
+/**
+ * A mesma conta do shader do céu (Preetham), feita no processador para UMA direção.
+ * Serve para a névoa ter a cor exata do horizonte sem ler pixels da placa de vídeo
+ * (ler pixels trava a GPU e dava um "soluço" a cada poucos segundos no celular).
+ */
+export function skyColor(sky, dir, out = new THREE.Color()) {
+  const u = sky.material.uniforms;
+  const sun = u.sunPosition.value;
+  const T = u.turbidity.value;
+  const ray = u.rayleigh.value;
+  const mieC = u.mieCoefficient.value;
+  const g = u.mieDirectionalG.value;
+  const gain = u.uGain.value;
+  const zc = Math.max(-1, Math.min(1, sun.y));
+  const sunE = 1000 * Math.max(0, 1 - Math.exp(-((1.6110731556870734 - Math.acos(zc)) / 1.5)));
+  const fade = 1 - Math.max(0, Math.min(1, 1 - Math.exp(sun.y / 450000)));
+  const rc = ray - (1 - fade);
+  const tr = [5.804542996261093e-6, 1.3562911419845635e-5, 3.0265902468824876e-5];
+  const mc = [1.8399918514433978e14, 2.7798023919660528e14, 4.0790479543861094e14];
+  const c = 0.2 * T * 10e-18;
+  const zen = Math.acos(Math.max(0, dir.y));
+  const inv = 1 / (Math.cos(zen) + 0.15 * Math.pow(93.885 - (zen * 180) / Math.PI, -1.253));
+  const sR = 8.4e3 * inv;
+  const sM = 1.25e3 * inv;
+  const cosT = dir.x * sun.x + dir.y * sun.y + dir.z * sun.z;
+  const rP = 0.05968310365946075 * (1 + ((cosT * 0.5 + 0.5) ** 2));
+  const g2 = g * g;
+  const mP = 0.07957747154594767 * ((1 - g2) / Math.pow(1 - 2 * g * cosT + g2, 1.5));
+  const k = Math.max(0, Math.min(1, Math.pow(1 - sun.y, 5)));
+  const res = [0, 0, 0];
+  for (let i = 0; i < 3; i++) {
+    const bR = tr[i] * rc;
+    const bM = 0.434 * c * mc[i] * mieC;
+    const Fex = Math.exp(-(bR * sR + bM * sM));
+    const ratio = (bR * rP + bM * mP) / (bR + bM);
+    let Lin = Math.pow(sunE * ratio * (1 - Fex), 1.5);
+    Lin *= 1 + (Math.sqrt(sunE * ratio * Fex) - 1) * k;
+    const tex = (Lin + 0.1 * Fex) * 0.04 + [0, 0.0003, 0.00075][i];
+    res[i] = Math.pow(tex, 1 / (1.2 + 1.2 * fade)) * gain;
+  }
+  const l = res[0] * 0.299 + res[1] * 0.587 + res[2] * 0.114;
+  return out.setRGB(...res.map((v) => Math.min(1, Math.max(0, l + (v - l) * 1.3))));
 }
 
 /** Textura macia de nuvem, desenhada em canvas. */

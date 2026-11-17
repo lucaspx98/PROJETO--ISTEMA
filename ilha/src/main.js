@@ -422,8 +422,9 @@ function start(fresh) {
   if (fresh) Save.clearGame();
   const data = fresh ? null : Save.loadGame();
   world = new World(data?.seed ?? 7, data);
-  view.dispose();
-  view = new View(canvas, world, gfx());
+  const old = view;
+  old.dispose(true);
+  view = new View(canvas, world, gfx(), old.renderer);
   mapImg = view.minimap();
   view.camYaw = Math.PI;
   playing = true;

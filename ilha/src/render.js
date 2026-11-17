@@ -13,11 +13,13 @@ const tmpS = new THREE.Vector3();
 const UP = new THREE.Vector3(0, 1, 0);
 
 export class View {
-  constructor(canvas, world, quality = 'alto') {
+  /** renderer: reaproveita o de uma cena anterior (evita recompilar todos os shaders ao tocar em Jogar). */
+  constructor(canvas, world, quality = 'alto', renderer = null) {
     this.w = world;
-    const r = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    const r = renderer ?? new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.ACESFilmicToneMapping;
+    r.debug.checkShaderErrors = import.meta.env.DEV; // na versão final não espera a compilação para checar erros
     r.toneMappingExposure = 1.0;
     r.shadowMap.enabled = true;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -93,9 +95,26 @@ export class View {
     this.resize();
   }
 
-  dispose() {
+  /** Libera a memória da cena. keepRenderer: o renderer continua vivo para a próxima cena. */
+  dispose(keepRenderer = false) {
     window.removeEventListener('resize', this.onResize);
-    this.renderer.dispose();
+    this.scene.traverse((o) => {
+      o.geometry?.dispose();
+      if (o.isInstancedMesh) o.dispose();
+    });
+    // texturas desenhadas em canvas (nuvens, lua, vaga-lumes)
+    [this.clouds.mat, this.moon.material, this.motes.mat].forEach((m) => m.map?.dispose());
+    this.field.tex.dispose();
+    this.field.ctex.dispose();
+    this.envState.rt?.dispose();
+    this.pmrem.dispose();
+    this.sun.shadow.map?.dispose();
+    if (this.post) {
+      this.post.composer.renderTarget1.dispose();
+      this.post.composer.renderTarget2.dispose();
+      this.post.bloom.dispose();
+    }
+    if (!keepRenderer) this.renderer.dispose();
   }
 
   resize() {
@@ -117,7 +136,7 @@ export class View {
     if (h < 0.2) out.set(0xc9b98a);
     else if (h < 1.7) out.set(0xdcc596);
     else if (h > 38) out.set(0x8f9bab);
-    else if (h > 26 || t.slope(x, z) > 0.95) out.set(0x6e6a66);
+    else if (h > 26) out.set(0x6e6a66);
     else {
       const f = t.forest(x, z);
       out.set(0x79c24f).lerp(C(0x3f8f3d), Math.min(1, Math.max(0, (f - 0.35) * 2.5)));
@@ -186,45 +205,21 @@ export class View {
     this.clouds = new G.Clouds();
     this.motes = new G.Motes();
     this.scene.add(this.stars, this.moon, this.clouds.group, this.motes.points);
-    // amostra a cor do horizonte para a névoa combinar com o céu
-    this.fogRT = new THREE.WebGLRenderTarget(4, 4);
-    this.fogCam = new THREE.PerspectiveCamera(20, 1, 0.1, 1000);
-    this.fogPix = new Uint8Array(4 * 4 * 4);
   }
 
   /** Recalcula o reflexo do céu (luz ambiente) e a cor da névoa quando o sol anda. */
   refreshEnv(dark) {
     const e = this.envState;
-    if (Math.abs(e.elev - this.sunDir.y) < 0.015 && Math.abs(e.dark - dark) < 0.03) return;
+    if (Math.abs(e.elev - this.sunDir.y) < 0.03 && Math.abs(e.dark - dark) < 0.05) return;
     e.elev = this.sunDir.y;
     e.dark = dark;
-    const r = this.renderer;
     const sky = this.sky;
     const pos = sky.position.clone();
     sky.position.set(0, 0, 0);
     this.envScene.add(sky);
     e.rt?.dispose();
-    e.rt = this.pmrem.fromScene(this.envScene, 0, 0.1, 1000);
+    e.rt = this.pmrem.fromScene(this.envScene, 0, 0.1, 1000, { size: 128 }); // céu é suave: 128 basta
     this.scene.environment = e.rt.texture;
-    // horizonte, olhando para o lado oposto ao sol
-    this.fogCam.position.set(0, 0, 0);
-    this.fogCam.lookAt(-this.sunDir.x, 0.04, -this.sunDir.z);
-    const prev = r.getRenderTarget();
-    const tm = r.toneMapping;
-    r.setRenderTarget(this.fogRT);
-    r.render(this.envScene, this.fogCam);
-    r.readRenderTargetPixels(this.fogRT, 0, 0, 4, 4, this.fogPix);
-    r.setRenderTarget(prev);
-    r.toneMapping = tm;
-    let rr = 0;
-    let gg = 0;
-    let bb = 0;
-    for (let i = 0; i < 16; i++) {
-      rr += this.fogPix[i * 4];
-      gg += this.fogPix[i * 4 + 1];
-      bb += this.fogPix[i * 4 + 2];
-    }
-    this.horizon = new THREE.Color(rr / 4080, gg / 4080, bb / 4080);
     this.scene.add(sky);
     sky.position.copy(pos);
   }
@@ -485,7 +480,9 @@ export class View {
     this.scene.environmentIntensity = 0.5 - dark * 0.3;
     this.sun.position.set(p.x, p.y, p.z).addScaledVector(this.lightDir, 90);
     this.sun.target.position.set(p.x, p.y, p.z);
-    if (this.horizon) this.scene.fog.color.copy(this.horizon);
+    // névoa = cor do horizonte do lado oposto ao sol (conta feita na CPU, sem travar a GPU)
+    this.horizon = G.skyColor(this.sky, tmpV.set(-this.sunDir.x, 0.04, -this.sunDir.z).normalize(), this.horizon);
+    this.scene.fog.color.copy(this.horizon);
     this.scene.fog.density = 0.0024 + dark * 0.002;
     this.stars.material.opacity = THREE.MathUtils.smoothstep(dark, 0.4, 0.9);
     this.stars.position.copy(this.camera.position);
@@ -504,7 +501,7 @@ export class View {
     wm.uSkyTop.value.set(0x2f6fc8).lerp(C(0x05081a), dark).lerp(C(0x6a5aa0), low * (1 - dark) * 0.5);
     wm.uDeep.value.set(0x063a5a).lerp(C(0x02101e), dark);
     wm.uShallow.value.set(0x1fb8b0).lerp(C(0x0a3040), dark);
-    this.grass.update(T, p);
+    this.grass.update(T, p, this.camera);
     if (this.Q.clouds) {
       const tint = C(0xffffff).lerp(C(0xffb48a), low * (1 - dark)).multiplyScalar(3.2 * (1 - dark) + 0.15);
       this.clouds.update(dt, this.camera, tint);
