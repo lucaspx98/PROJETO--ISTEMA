@@ -61,7 +61,7 @@ export class View {
     this.fxMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(160 * 3), 3);
     this.fxMesh.frustumCulled = false;
     this.fxMesh.count = 0;
-    this.scene.add(this.fxMesh, this.trailMesh);
+    this.scene.add(this.fxMesh);
     this.shakes = new Map();
     this.trauma = 0; // tremor da câmera (0..1), cai sozinho
     this.dustT = 0;
@@ -88,6 +88,7 @@ export class View {
     });
     this.trailMesh = new THREE.Mesh(tg, this.trailMat);
     this.trailMesh.frustumCulled = false;
+    this.scene.add(this.trailMesh);
     this.trailTip = new THREE.Vector3();
     this.trailBase = new THREE.Vector3();
     this.enemyMeshes = new Map();
@@ -637,7 +638,9 @@ export class View {
         const rage = e.hp < e.maxHp * 0.4;
         m.core.material.emissive.set(rage ? 0xff2200 : 0xff7a00);
         m.core.scale.setScalar(1 + Math.sin(T * (rage ? 14 : 5)) * 0.12);
-        m.body.material.color.set(hitFlash ? 0xffffff : 0x777b82);
+        m.mats.forEach((mt) => mt.emissive.set(hitFlash ? 0x777777 : 0x000000));
+        m.head.rotation.y = Math.sin(T * 0.8) * 0.25;
+        m.head.rotation.x = e.state === 'windup' ? -0.3 : 0;
       }
     }
     for (const [id, m] of this.enemyMeshes) {

@@ -112,10 +112,23 @@ export function terrainMaterial() {
         // areia: ondulações e areia molhada perto da água
         float sand = 1.0 - smoothstep(1.4, 2.2, vWP.y);
         diffuseColor.rgb *= 1.0 - sand * (0.09 * sin(vWP.x * 3.1 + vWP.z * 1.3 + n2 * 3.0) + 0.12 * n3 + 0.1);
-        diffuseColor.rgb *= mix(0.55, 1.0, smoothstep(-0.3, 0.7, vWP.y));`,
+        diffuseColor.rgb *= mix(0.55, 1.0, smoothstep(-0.3, 0.7, vWP.y));
+        // neve: montes suaves levemente azulados
+        float snowK = smoothstep(35.0, 39.0, vWP.y + (n1 - 0.5) * 3.0);
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.68, 0.78) * (0.88 + n2 * 0.12 + n1 * 0.08), snowK);`,
       )
       .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(0.35, roughnessFactor, smoothstep(-0.3, 0.6, vWP.y));')
       // terra seca quase não reflete o céu (sem isso, morros vistos de lado ficavam com um véu azulado)
+      .replace(
+        '#include <emissivemap_fragment>',
+        /* glsl */ `#include <emissivemap_fragment>
+        // brilhinhos na neve que piscam conforme a câmera anda
+        vec2 sc = floor(vWP.xz * 9.0);
+        float sh = gHash(sc);
+        float tw = fract(sh * 91.7 + dot(normalize(vViewPosition), vec3(13.1, 7.3, 11.7)) * 2.0);
+        float spark = step(0.965, sh) * smoothstep(0.75, 1.0, tw);
+        totalEmissiveRadiance += vec3(0.9, 0.95, 1.0) * spark * smoothstep(36.0, 40.0, vWP.y) * 3.0;`,
+      )
       .replace('#include <aomap_fragment>', 'reflectedLight.indirectSpecular *= mix(0.6, 0.08, smoothstep(-0.3, 0.6, vWP.y));\n#include <aomap_fragment>');
   };
   return m;
@@ -487,17 +500,21 @@ export class Motes {
   }
 
   update(T, p, height, dark) {
+    // no alto da montanha os vaga-lumes/pólen viram flocos de neve caindo
+    const snow = Math.min(1, Math.max(0, (p.y - 27) / 7));
     for (let i = 0; i < this.n; i++) {
       const [ox, oz, oy, ph] = this.seed[i];
-      const x = p.x + (((ox + T * 0.4 + Math.sin(T * 0.3 + ph) * 2 - p.x + 30) % 60) + 60) % 60 - 30;
+      const x = p.x + (((ox + T * (0.4 + snow * 1.2) + Math.sin(T * 0.3 + ph) * 2 - p.x + 30) % 60) + 60) % 60 - 30;
       const z = p.z + (((oz + Math.cos(T * 0.25 + ph) * 2 - p.z + 30) % 60) + 60) % 60 - 30;
-      this.pos.set([x, height(x, z) + oy + Math.sin(T * 1.3 + ph) * 0.4, z], i * 3);
+      const fall = (((ph * 3 + oy * 2 - T * 1.6) % 9) + 9) % 9;
+      const y = snow > 0 ? height(x, z) + fall * snow + (oy + Math.sin(T * 1.3 + ph) * 0.4) * (1 - snow) : height(x, z) + oy + Math.sin(T * 1.3 + ph) * 0.4;
+      this.pos.set([x, y, z], i * 3);
     }
     this.points.geometry.attributes.position.needsUpdate = true;
     // de dia: pólen discreto; à noite: vaga-lumes que brilham (e pegam bloom)
-    this.mat.color.setRGB(1, 1, 0.85).lerp(new THREE.Color(2.2, 3.0, 0.6), dark);
-    this.mat.size = 0.12 + dark * 0.3;
-    this.mat.opacity = 0.35 + dark * 0.65;
+    this.mat.color.setRGB(1, 1, 0.85).lerp(new THREE.Color(2.2, 3.0, 0.6), dark * (1 - snow)).lerp(new THREE.Color(1.3, 1.35, 1.45), snow);
+    this.mat.size = (0.12 + dark * 0.3) * (1 - snow) + 0.22 * snow;
+    this.mat.opacity = (0.35 + dark * 0.65) * (1 - snow) + 0.85 * snow;
   }
 }
 

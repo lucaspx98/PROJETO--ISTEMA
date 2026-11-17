@@ -571,26 +571,66 @@ export function wolf() {
   return { root, mats, legs, tail, head };
 }
 
+/** Pedra orgânica com musgo em cima e frestas escuras (usada no Golem). */
+function stone(r, seed, sx = 1, sy = 1, sz = 1, moss = 1) {
+  let g = new THREE.IcosahedronGeometry(r, 1);
+  g.deleteAttribute('normal');
+  g.deleteAttribute('uv');
+  g = mergeVertices(g);
+  lumpy(g, 0.2, 2.2 / r, seed);
+  lumpy(g, 0.06, 6.0 / r, seed + 1);
+  g.scale(sx, sy, sz);
+  return paint(g, (x, y, z, nx, ny) => {
+    const n = Math.sin(x * 4.1 + z * 3.3 + seed) * 0.5 + 0.5;
+    const base = 0.12 + n * 0.06;
+    const m = Math.min(1, Math.max(0, (ny - 0.5) * 2.5)) * moss * (0.5 + n * 0.5);
+    return [base * (1 - m) + 0.1 * m, base * (1 - m) + 0.2 * m, base * 1.06 * (1 - m) + 0.05 * m];
+  });
+}
+
+/** O Golem: rochas com musgo, cristais nas costas e o coração de fogo no peito rachado. */
 export function golem() {
   const root = new THREE.Group();
-  const body = mesh(new THREE.DodecahedronGeometry(1.9, 0), M.golem.clone(), 0, 3.1, 0);
-  body.scale.set(1.1, 1.15, 0.9);
-  const head = mesh(new THREE.DodecahedronGeometry(0.85, 0), M.golemDark, 0, 5.4, 0.2);
-  const core = mesh(new THREE.IcosahedronGeometry(0.6, 0), M.core.clone(), 0, 3.3, 1.5);
-  root.add(body, head, core);
-  [-0.3, 0.3].forEach((x) => root.add(mesh(new THREE.SphereGeometry(0.14, 6, 5), M.core, x, 5.5, 0.95)));
-  const arm = (s) => {
+  const rock = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, flatShading: true, roughness: 0.92 });
+  const glow = M.core.clone();
+  const R = (geo, x, y, z) => mesh(geo, rock, x, y, z);
+  // tronco: peito largo + barriga, ombros de pedra
+  const body = R(stone(1.7, 1, 1.25, 1.05, 0.85), 0, 3.3, 0);
+  root.add(body, R(stone(1.2, 2, 1.1, 0.8, 0.9), 0, 1.9, 0.05));
+  [-1, 1].forEach((sd) => root.add(R(stone(0.95, 3 + sd, 1.1, 0.9, 1), sd * 1.75, 4.35, -0.1)));
+  // coração e rachaduras brilhando ao redor
+  const core = mesh(new THREE.IcosahedronGeometry(0.5, 1), glow, 0, 3.4, 1.38);
+  root.add(core);
+  [[0.55, 0.25, 0.6], [-0.5, 0.35, -0.7], [0.3, -0.55, 1.9], [-0.4, -0.45, -2.1]].forEach(([x, y, rz]) => {
+    const c = mesh(new THREE.BoxGeometry(0.75, 0.07, 0.08), glow, x * 0.9, 3.4 + y, 1.3);
+    c.rotation.z = rz;
+    root.add(c);
+  });
+  // cristais nas costas
+  [[-0.7, 4.7, -0.9, -0.4, 1.0], [0.2, 5.0, -1.0, 0.2, 1.3], [0.9, 4.5, -0.8, 0.5, 0.9], [-0.1, 4.0, -1.3, -0.1, 0.8]].forEach(([x, y, z, rz, k]) => {
+    const c = mesh(new THREE.OctahedronGeometry(0.35 * k, 0).scale(0.7, 2.2, 0.7), M.crystal, x, y, z);
+    c.rotation.set(-0.5, 0, rz);
+    root.add(c);
+  });
+  // cabeça afundada nos ombros, com testa e olhos de brasa
+  const head = new THREE.Group();
+  head.position.set(0, 5.05, 0.35);
+  head.add(mesh(stone(0.7, 9, 1.1, 0.85, 1), rock, 0, 0, 0));
+  head.add(mesh(new THREE.BoxGeometry(1.1, 0.2, 0.35), rock, 0, 0.2, 0.5));
+  [-0.27, 0.27].forEach((x) => head.add(mesh(new THREE.SphereGeometry(0.11, 8, 6), glow, x, 0.02, 0.62)));
+  root.add(head);
+  const arm = (sd) => {
     const g = new THREE.Group();
-    g.position.set(s * 2.3, 4.2, 0);
-    g.add(mesh(new THREE.DodecahedronGeometry(0.9, 0), M.golemDark, 0, -0.8, 0));
-    g.add(mesh(new THREE.DodecahedronGeometry(1.1, 0), M.golem, 0, -2.4, 0.2));
+    g.position.set(sd * 2.25, 4.1, 0);
+    g.add(R(stone(0.75, 10 + sd, 1, 1.25, 1), 0, -0.7, 0));
+    g.add(R(stone(1.0, 12 + sd, 1.05, 1.1, 1.05, 0.4), 0, -2.3, 0.2));
+    // dedos de pedra
+    [-0.35, 0, 0.35].forEach((x, i) => g.add(R(stone(0.28, 14 + i, 1, 1.3, 1, 0), x, -3.25, 0.45)));
     root.add(g);
     return g;
   };
-  const leg = (s) => root.add(mesh(new THREE.DodecahedronGeometry(0.95, 0).scale(1, 1.4, 1), M.golemDark, s * 0.95, 0.95, 0));
-  leg(-1);
-  leg(1);
-  return { root, body, core, armL: arm(-1), armR: arm(1) };
+  [-1, 1].forEach((sd) => root.add(R(stone(0.85, 20 + sd, 1, 1.45, 1.05, 0.3), sd * 0.9, 0.95, 0)));
+  return { root, body, core, head, mats: [rock], armL: arm(-1), armR: arm(1) };
 }
 
 // ---------- construções ----------
