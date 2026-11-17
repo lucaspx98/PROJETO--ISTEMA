@@ -1,5 +1,5 @@
 // Controlador do app: laço do jogo, controles (joystick, câmera, botões, teclado), HUD, sons, salvar e anúncios.
-import { World, BUILDS, CAMP, HALF, NPC } from './world.js';
+import { World, BUILDS, CAMP, HALF, NPC, SHOP } from './world.js';
 import { QUESTS } from './quests.js';
 import { View } from './render.js';
 import { Save } from './storage.js';
@@ -146,6 +146,51 @@ function dialog(who, text) {
   dialogTimer = setTimeout(() => $('dialog').classList.add('hidden'), 9000);
 }
 $('dialog').addEventListener('click', () => $('dialog').classList.add('hidden'));
+
+// ---------- loja ----------
+
+let shopOpen = false;
+function openShop(hint) {
+  shopOpen = true;
+  $('shop-hint').textContent = hint ? `Missão: ${hint}` : 'A ilha é sua. Gaste suas moedas!';
+  renderShop();
+  $('shop').classList.remove('hidden');
+}
+function closeShop() {
+  shopOpen = false;
+  $('shop').classList.add('hidden');
+}
+function renderShop() {
+  const p = world.player;
+  $('shop-coins').textContent = `🪙 ${p.inv.coin}`;
+  $('shop-list').replaceChildren(
+    ...SHOP.map((it) => {
+      const owned = it.kind === 'gear' ? p.gear[it.id] : it.kind === 'look' && p.owned.includes(it.id);
+      const worn = it.kind === 'look' && owned && Object.entries(it.look).every(([k, v]) => p.look[k] === v);
+      const el = document.createElement('button');
+      el.className = `shop-item${worn || (owned && it.kind === 'gear') ? ' on' : ''}${!owned && p.inv.coin < it.price ? ' off' : ''}`;
+      const price = it.kind === 'gear' && owned ? '✔' : it.kind === 'look' && owned ? (worn ? 'Usando' : 'Vestir') : `${it.price} 🪙`;
+      el.innerHTML = `<i>${it.icon}</i><div><b>${it.name}</b><small>${it.desc}</small></div><em>${price}</em>`;
+      el.addEventListener('click', () => {
+        toast(world.buy(it.id));
+        handleEvents();
+        renderShop();
+      });
+      return el;
+    }),
+  );
+}
+$('shop-close').addEventListener('click', () => {
+  Sfx.click();
+  closeShop();
+});
+$('shop-ad').addEventListener('click', async () => {
+  const ok = await Ads.showRewarded();
+  if (!ok) return toast('Anúncio indisponível agora');
+  world.adReward();
+  handleEvents();
+  renderShop();
+});
 
 function floater(x, y, z, text, color = '#fff') {
   const s = view.project(x, y, z);
@@ -305,6 +350,12 @@ function handleEvents() {
       case 'dialog':
         dialog(ev.who, ev.text);
         break;
+      case 'shop':
+        openShop(ev.hint);
+        break;
+      case 'bought':
+        Sfx.levelup();
+        break;
       case 'swing':
         Sfx.swing();
         break;
@@ -386,7 +437,9 @@ function loop(now) {
   last = now;
   if (playing && !paused) {
     readInput(dt);
-    if (hitStop > 0) hitStop -= dt;
+    if (shopOpen) {
+      // loja aberta: o mundo espera
+    } else if (hitStop > 0) hitStop -= dt;
     else world.update(dt, input);
     input.roll = input.interact = input.eat = false;
     handleEvents();
@@ -460,6 +513,7 @@ function save() {
 // ---------- telas ----------
 
 function start(fresh) {
+  closeShop();
   if (fresh) Save.clearGame();
   const data = fresh ? null : Save.loadGame();
   world = new World(data?.seed ?? 7, data);

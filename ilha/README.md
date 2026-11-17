@@ -11,6 +11,7 @@ Você naufragou. Com a ajuda do **Capitão Bento** (casaco, barba e perna de pau
 - Construções: fogueira (cura), bancada (melhora a arma), cabana (dormir pula a noite), barco.
 - Combate com mira automática, rolamento para desviar, inimigos que avisam o golpe (círculo vermelho), chefão Golem.
 - Personagens com juntas (ombro, cotovelo, quadril, joelho), rosto, cabelo e roupas; animação de andar, atacar e rolar.
+- **Loja do Capitão Bento** (fale com ele): poção, botas (+12% de velocidade), armadura (+30 de vida) e roupas (chapéu de palha, colete vermelho ou dourado) que aparecem no herói.
 - Jogo salvo sozinho a cada 8 s.
 - **Gráficos:** céu físico com nascer e pôr do sol, mar com ondas, reflexo e espuma na beira, grama que balança com o vento e abre quando você passa, árvores e pedras orgânicas com vento, luz ambiente vinda do céu, sombras suaves, nuvens, lua, estrelas e vaga-lumes, bloom e correção de cor (`src/gfx.js`).
 - **Qualidade Alto / Médio / Baixo** no menu (🎨). No celular começa em Médio; se o jogo ficar travando, baixa sozinho.
@@ -40,7 +41,7 @@ HPLOG=1 HUMAN=0.3 node tools/bot.js 7
 |---|---|
 | **Banner** | Só no menu (nunca enquanto joga) |
 | **Intersticial** | A cada 3 vezes que você volta ao menu ou renasce no acampamento (no máximo 1 a cada 90 s) |
-| **Recompensado** | Reviver no mesmo lugar depois de morrer |
+| **Recompensado** | Reviver no mesmo lugar depois de morrer e +25 moedas na loja do Capitão (o jogador escolhe) |
 
 Os IDs em `src/config.js` e no `AndroidManifest.xml` são os **de teste** do Google. Troque pelos seus antes de publicar.
 

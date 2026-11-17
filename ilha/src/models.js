@@ -322,7 +322,10 @@ const ball = (r, m, x, y, z) => part(new THREE.SphereGeometry(r, 16, 12), m, x, 
  * Pessoa estilizada com proporções humanas e juntas (ombro, cotovelo, quadril, joelho).
  * captain: casaco, barba, chapéu e perna de pau. Devolve as juntas para animar.
  */
-export function humanoid({ captain = false } = {}) {
+const VESTS = { teal: P.vest, red: smooth(0xa8322d), gold: smooth(0xd4a52a, { metalness: 0.35, roughness: 0.45 }) };
+const STRAW = smooth(0xd9b866, { roughness: 0.95 });
+
+export function humanoid({ captain = false, vestColor = 'teal', hat = null } = {}) {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
@@ -343,7 +346,7 @@ export function humanoid({ captain = false } = {}) {
   body.add(torso, chest, hips, belt, buckle, neck);
   if (!captain) {
     // colete do náufrago e mochila
-    const vest = part(new THREE.CylinderGeometry(0.345, 0.27, 0.5, 16, 1, true, Math.PI * 0.62, Math.PI * 1.76), P.vest, 0, 1.38, 0);
+    const vest = part(new THREE.CylinderGeometry(0.345, 0.27, 0.5, 16, 1, true, Math.PI * 0.62, Math.PI * 1.76), VESTS[vestColor] ?? P.vest, 0, 1.38, 0);
     vest.scale.z = 0.66;
     vest.material.side = THREE.DoubleSide;
     const pack = part(new THREE.SphereGeometry(0.24, 12, 10), P.pack, 0, 1.36, -0.25);
@@ -396,6 +399,11 @@ export function humanoid({ captain = false } = {}) {
     cap0.scale.set(1.0, 1.1, 1.04);
     cap0.rotation.x = -0.55; // puxado para trás: mostra a testa
     head.add(cap0);
+    if (hat === 'straw') {
+      const brim = part(new THREE.CylinderGeometry(0.46, 0.5, 0.035, 22), STRAW, 0, 0.17, 0);
+      brim.rotation.x = -0.12;
+      head.add(brim, part(new THREE.CylinderGeometry(0.22, 0.27, 0.2, 18), STRAW, 0, 0.27, -0.02), part(new THREE.CylinderGeometry(0.272, 0.272, 0.05, 18), P.vest, 0, 0.2, -0.02));
+    }
     [[-0.11, 0.21, 0.12, 0.5], [0.02, 0.24, 0.11, -0.2], [0.12, 0.2, 0.1, -0.6], [0, 0.05, -0.2, 0], [-0.15, 0.06, -0.14, 0], [0.15, 0.06, -0.14, 0]].forEach(([x, y, z, r]) => {
       const tuft = ball(0.1, P.hair, x, y, z);
       tuft.scale.set(1.1, 0.7, 1);

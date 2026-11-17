@@ -27,6 +27,16 @@ export const BUILDS = {
   barco: { name: 'Barco', x: BOAT.x, z: BOAT.z, cost: { wood: 30, crystal: 8, core: 1 }, r: 3 },
 };
 export const NPC = { x: CAMP.x + 2, z: CAMP.z + 4, name: 'Capitão Bento' };
+/** Loja do Capitão: melhorias permanentes e roupas (as moedas finalmente servem para algo). */
+export const SHOP = [
+  { id: 'potion', name: 'Poção', icon: '🧪', desc: 'Cura 60 de vida', price: 15, kind: 'item' },
+  { id: 'botas', name: 'Botas de couro', icon: '🥾', desc: 'Anda 12% mais rápido', price: 60, kind: 'gear' },
+  { id: 'armadura', name: 'Armadura de couro', icon: '🛡️', desc: '+30 de vida máxima', price: 90, kind: 'gear' },
+  { id: 'chapeu', name: 'Chapéu de palha', icon: '👒', desc: 'Visual', price: 50, kind: 'look', look: { hat: 'straw' } },
+  { id: 'colete_verm', name: 'Colete vermelho', icon: '🦺', desc: 'Visual', price: 40, kind: 'look', look: { vest: 'red' } },
+  { id: 'colete_ouro', name: 'Colete dourado', icon: '✨', desc: 'Visual', price: 120, kind: 'look', look: { vest: 'gold' } },
+];
+export const AD_COINS = 25;
 export const ITEM_NAMES = { wood: 'madeira', stone: 'pedra', berry: 'frutinha', crystal: 'cristal', coin: 'moeda', relic: 'relíquia', core: 'coração do Golem', potion: 'poção' };
 
 const ENEMY = {
@@ -105,6 +115,9 @@ export class World {
       xp: 0,
       weapon: 1,
       inv: { wood: 0, stone: 0, berry: 0, crystal: 0, coin: 0, relic: 0, core: 0, potion: 1 },
+      gear: { botas: false, armadura: false },
+      owned: [],
+      look: { vest: 'teal', hat: null },
       atkCd: 0,
       attackT: 0,
       rollT: 0,
@@ -331,8 +344,9 @@ export class World {
       vz = p.rollDir.z * 13;
     } else {
       const slow = p.attackT > 0 ? 0.45 : 1;
-      vx = mx * 6.2 * slow;
-      vz = mz * 6.2 * slow;
+      const sp = 6.2 * (p.gear.botas ? 1.12 : 1) * slow;
+      vx = mx * sp;
+      vz = mz * sp;
       if (len > 0.1 && p.attackT <= 0) p.yaw = Math.atan2(mx, mz);
     }
     p.moving = Math.hypot(vx, vz) > 0.5;
@@ -607,15 +621,43 @@ export class World {
       this.completeQuest();
       return;
     }
+    this.emit('shop', { hint: q?.hint });
+  }
+
+  /** Compra (ou veste, se já tem) um item da loja. Devolve a mensagem para mostrar. */
+  buy(id) {
     const p = this.player;
-    if (p.inv.coin >= 15) {
-      p.inv.coin -= 15;
-      p.inv.potion += 1;
-      this.emit('pickup', { item: 'potion', n: 1 });
-      this.emit('dialog', { who: NPC.name, text: 'Uma poção por 15 moedas. Bom negócio! Volte sempre.' });
-    } else {
-      this.emit('dialog', { who: NPC.name, text: q ? `${q.hint} Se juntar 15 moedas, eu te vendo uma poção.` : 'A ilha é sua agora. Vendo poções por 15 moedas.' });
+    const it = SHOP.find((i) => i.id === id);
+    if (!it) return 'Item desconhecido.';
+    if (it.kind === 'look' && p.owned.includes(id)) {
+      const [k, v] = Object.entries(it.look)[0];
+      p.look[k] = p.look[k] === v ? (k === 'vest' ? 'teal' : null) : v;
+      this.emit('look');
+      return p.look[k] === v ? `Vestiu: ${it.name}` : `Tirou: ${it.name}`;
     }
+    if (it.kind === 'gear' && p.gear[id]) return 'Você já tem.';
+    if (p.inv.coin < it.price) return `Faltam ${it.price - p.inv.coin} moedas.`;
+    p.inv.coin -= it.price;
+    if (it.kind === 'item') p.inv.potion += 1;
+    else if (it.kind === 'gear') {
+      p.gear[id] = true;
+      if (id === 'armadura') {
+        p.maxHp += 30;
+        p.hp += 30;
+      }
+    } else {
+      p.owned.push(id);
+      Object.assign(p.look, it.look);
+      this.emit('look');
+    }
+    this.emit('bought', { id });
+    return `Comprou: ${it.name}!`;
+  }
+
+  /** Moedas por assistir um anúncio (o jogador escolhe). */
+  adReward() {
+    this.player.inv.coin += AD_COINS;
+    this.emit('pickup', { item: 'coin', n: AD_COINS });
   }
 
   // ---------- missões ----------
@@ -816,7 +858,7 @@ export class World {
     return {
       v: 1,
       seed: this.seed,
-      p: { x: p.x, z: p.z, hp: p.hp, maxHp: p.maxHp, level: p.level, xp: p.xp, weapon: p.weapon, inv: p.inv },
+      p: { x: p.x, z: p.z, hp: p.hp, maxHp: p.maxHp, level: p.level, xp: p.xp, weapon: p.weapon, inv: p.inv, gear: p.gear, owned: p.owned, look: p.look },
       builds: this.builds,
       quest: this.quest,
       counters: this.counters,
@@ -829,7 +871,8 @@ export class World {
   }
 
   load(s) {
-    Object.assign(this.player, s.p, { inv: { ...this.player.inv, ...s.p.inv } });
+    const p0 = this.player;
+    Object.assign(p0, s.p, { inv: { ...p0.inv, ...s.p.inv }, gear: { ...p0.gear, ...s.p.gear }, owned: s.p.owned ?? [], look: { ...p0.look, ...s.p.look } });
     if (this.player.hp <= 0) this.player.hp = this.player.maxHp;
     Object.assign(this.builds, s.builds);
     this.quest = s.quest;

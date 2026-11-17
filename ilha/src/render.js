@@ -372,11 +372,22 @@ export class View {
 
   // ---------- personagens e construções ----------
 
-  buildActors() {
-    this.hero = Mo.humanoid();
+  /** Monta o herói com a roupa atual (colete e chapéu da loja). */
+  buildHero() {
+    const look = this.w.player.look;
+    if (this.hero) {
+      this.scene.remove(this.hero.root);
+      this.hero.root.traverse((o) => o.geometry?.dispose());
+    }
+    this.hero = Mo.humanoid({ vestColor: look.vest, hat: look.hat });
     Mo.bakeRig(this.hero.root, { keep: [this.hero.torso] });
+    this.heroLook = `${look.vest}|${look.hat}`;
     this.heroWeaponLevel = 0;
     this.scene.add(this.hero.root);
+  }
+
+  buildActors() {
+    this.buildHero();
     this.npc = Mo.humanoid({ captain: true });
     Mo.bakeRig(this.npc.root, { keep: [this.npc.torso] });
     this.npc.root.position.set(NPC.x, this.w.t.height(NPC.x, NPC.z), NPC.z);
@@ -565,6 +576,7 @@ export class View {
     this.smoke.update(dt, smokeSrc, dark, this.renderer.domElement.height);
 
     // herói
+    if (this.heroLook !== `${p.look.vest}|${p.look.hat}`) this.buildHero();
     const h = this.hero;
     if (this.heroWeaponLevel !== p.weapon) {
       this.heroWeaponLevel = p.weapon;

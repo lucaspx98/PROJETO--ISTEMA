@@ -72,3 +72,14 @@ button { font-family: inherit; }
 #ad-sim { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; background: rgba(0,0,0,.92); z-index: 40; gap: 12px; text-align: center; padding: 20px; }
 #ad-sim b { font-size: 28px; }
 body.foto #hud, body.foto .screen { display: none !important; }
+
+/* loja do Capitão */
+#shop { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, 92vw); max-height: 86vh; overflow: auto; pointer-events: auto;
+  background: rgba(15,24,36,.94); border: 2px solid #ffd23f; border-radius: 18px; padding: 12px 14px; box-shadow: 0 16px 40px rgba(0,0,0,.5); }
+.shop-head { display: flex; align-items: center; gap: 10px; } .shop-head b { color: #ffd23f; font-size: 17px; flex: 1; }
+#shop-coins { font-weight: 900; } #shop-hint { margin: 6px 0 8px; font-size: 13px; opacity: .8; }
+#shop-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.shop-item { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.12); color: #fff; font: inherit; text-align: left; cursor: pointer; }
+.shop-item i { font-style: normal; font-size: 24px; } .shop-item div { flex: 1; } .shop-item b { display: block; font-size: 13px; } .shop-item small { font-size: 11px; opacity: .75; }
+.shop-item em { font-style: normal; font-weight: 900; font-size: 13px; color: #ffe066; white-space: nowrap; }
+.shop-item.off { opacity: .45; } .shop-item.on { border-color: #69db7c; background: rgba(105,219,124,.15); }
