@@ -61,8 +61,35 @@ export class View {
     this.fxMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(160 * 3), 3);
     this.fxMesh.frustumCulled = false;
     this.fxMesh.count = 0;
-    this.scene.add(this.fxMesh);
+    this.scene.add(this.fxMesh, this.trailMesh);
     this.shakes = new Map();
+    this.trauma = 0; // tremor da câmera (0..1), cai sozinho
+    this.dustT = 0;
+    // rastro da arma: faixa de 12 pontos (ponta e base da lâmina) que some com o tempo
+    this.trailN = 12;
+    this.trail = [];
+    const tg = new THREE.BufferGeometry();
+    tg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(this.trailN * 2 * 3), 3));
+    tg.setAttribute('alpha', new THREE.BufferAttribute(new Float32Array(this.trailN * 2), 1));
+    const ti = [];
+    for (let i = 0; i < this.trailN - 1; i++) {
+      const a = i * 2;
+      ti.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+    tg.setIndex(ti);
+    this.trailMat = new THREE.ShaderMaterial({
+      uniforms: { uColor: { value: new THREE.Color(1.6, 1.6, 1.4) } },
+      vertexShader: 'attribute float alpha; varying float vA; void main() { vA = alpha; gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 uColor; varying float vA; void main() { gl_FragColor = vec4(uColor, vA); }',
+      transparent: true,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+      blending: THREE.AdditiveBlending,
+    });
+    this.trailMesh = new THREE.Mesh(tg, this.trailMat);
+    this.trailMesh.frustumCulled = false;
+    this.trailTip = new THREE.Vector3();
+    this.trailBase = new THREE.Vector3();
     this.enemyMeshes = new Map();
     this.shotMeshes = new Map();
     this.rings = [];
@@ -405,6 +432,17 @@ export class View {
     }
   }
 
+  /** Poeira nos pés (cor do chão): rolar e correr. */
+  dust(x, y, z, n) {
+    const sand = y < 2.2;
+    for (let i = 0; i < n; i++) {
+      if (this.fx.length >= 160) return;
+      const a = Math.random() * 6.28;
+      const sp = 0.8 + Math.random() * 1.6;
+      this.fx.push({ x: x + Math.cos(a) * 0.3, y: y + 0.1, z: z + Math.sin(a) * 0.3, r: Math.random() * 6, c: new THREE.Color(sand ? 0xd9c49a : 0x8a7a5a), vx: Math.cos(a) * sp, vy: 1 + Math.random() * 1.5, vz: Math.sin(a) * sp, life: 0.45, g: 4 });
+    }
+  }
+
   ring(x, z, radius, time, color = 0xff3b3b) {
     const m = new THREE.Mesh(new THREE.RingGeometry(0.9, 1, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.85, depthWrite: false }));
     m.position.set(x, this.w.t.height(x, z) + 0.25, z);
@@ -415,6 +453,15 @@ export class View {
   /** Reage aos eventos do mundo (os mesmos que o som usa). */
   handle(ev) {
     const w = this.w;
+    const p = w.player;
+    const near = (x, z, r = 30) => Math.max(0, 1 - Math.hypot(x - p.x, z - p.z) / r);
+    const add = (k) => (this.trauma = Math.min(1, this.trauma + k));
+    if (ev.type === 'hit') add(ev.kind === 'golem' ? 0.28 : 0.18);
+    else if (ev.type === 'enemyDie') add(ev.kind === 'golem' ? 0.9 : 0.3);
+    else if (ev.type === 'hurt') add(0.45);
+    else if (ev.type === 'boom' || ev.type === 'strike') add(0.6 * near(ev.x ?? p.x, ev.z ?? p.z));
+    else if (ev.type === 'nodeDown') add(0.12);
+    else if (ev.type === 'roll') this.dust(p.x, p.y, p.z, 8);
     const colors = { tree: 0x8a5a33, pine: 0x8a5a33, rock: 0x9aa0aa, bush: 0xd62f4b, crystal: 0x6ff2ff, chest: 0xf2c230, relic: 0xf2c230 };
     if (ev.type === 'chop') {
       this.shakes.set(ev.id, 0.25);
@@ -541,6 +588,12 @@ export class View {
     h.head.rotation.y = Math.sin(T * 0.7) * 0.15 * (1 - g);
     h.root.rotation.z = p.dead ? Math.PI / 2 : 0;
     h.root.visible = !(p.hurtT > 0 && Math.floor(T * 20) % 2 === 0);
+    this.updateTrail(p);
+    this.dustT -= dt * g;
+    if (this.dustT <= 0 && g > 0.5 && p.rollT <= 0) {
+      this.dustT = 0.22;
+      this.dust(p.x, p.y, p.z, 2);
+    }
 
     // Capitão
     this.npc.body.position.y = Math.sin(T * 2) * 0.012;
@@ -651,7 +704,7 @@ export class View {
     for (let i = this.fx.length - 1; i >= 0; i--) {
       const f = this.fx[i];
       f.life -= dt;
-      f.vy -= 14 * dt;
+      f.vy -= (f.g ?? 14) * dt;
       f.x += f.vx * dt;
       f.y += f.vy * dt;
       f.z += f.vz * dt;
@@ -687,9 +740,50 @@ export class View {
     const cy = Math.max(p.y + 1.8 + Math.sin(this.camPitch) * cd, w.t.height(cx, cz) + 1.6, 1.2);
     this.camera.position.lerp(tmpV.set(cx, cy, cz), Math.min(1, dt * 10));
     this.camera.lookAt(p.x, p.y + 1.8, p.z);
+    // tremor: forte nos golpes e no Golem, some em ~0,5 s
+    if (this.trauma > 0) {
+      const k = this.trauma * this.trauma;
+      this.camera.rotation.z += Math.sin(T * 47) * 0.035 * k;
+      this.camera.position.x += Math.sin(T * 61 + 1) * 0.35 * k;
+      this.camera.position.y += Math.sin(T * 53 + 2) * 0.3 * k;
+      this.trauma = Math.max(0, this.trauma - dt * 1.8);
+    }
     this.cullNodes();
     if (this.post) this.post.composer.render(dt);
     else this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Rastro da arma: guarda ponta e base da lâmina durante o golpe e apaga aos poucos. */
+  updateTrail(p) {
+    const wpn = this.heroWeapon;
+    const tr = this.trail;
+    if (p.attackT > 0 && wpn) {
+      wpn.updateWorldMatrix(true, false);
+      const len = p.weapon >= 3 ? 1.35 : 0.85;
+      tr.unshift({ tip: wpn.localToWorld(this.trailTip.set(0, 0, len)).clone(), base: wpn.localToWorld(this.trailBase.set(0, 0, 0.1)).clone(), age: 0 });
+      if (tr.length > this.trailN) tr.pop();
+    }
+    tr.forEach((t) => (t.age += 1));
+    while (tr.length && tr[tr.length - 1].age > 10) tr.pop();
+    const pos = this.trailMesh.geometry.attributes.position;
+    const al = this.trailMesh.geometry.attributes.alpha;
+    for (let i = 0; i < this.trailN; i++) {
+      const t = tr[Math.min(i, tr.length - 1)];
+      if (!t) {
+        al.setX(i * 2, 0);
+        al.setX(i * 2 + 1, 0);
+        continue;
+      }
+      pos.setXYZ(i * 2, t.tip.x, t.tip.y, t.tip.z);
+      pos.setXYZ(i * 2 + 1, t.base.x, t.base.y, t.base.z);
+      const a = i < tr.length ? Math.max(0, 1 - t.age / 10) * (1 - i / this.trailN) : 0;
+      al.setX(i * 2, a);
+      al.setX(i * 2 + 1, a * 0.35);
+    }
+    pos.needsUpdate = true;
+    al.needsUpdate = true;
+    this.trailMat.uniforms.uColor.value.set(p.weapon >= 3 ? 0x7ff0ff : 0xffe7b0).multiplyScalar(2.2);
+    this.trailMesh.visible = tr.length > 1;
   }
 
   /** Posição do mundo → pixels da tela (para números de dano e avisos). */

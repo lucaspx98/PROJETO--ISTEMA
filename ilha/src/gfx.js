@@ -180,7 +180,7 @@ export class Grass {
           vec2 wp = uCenter.xz + rel;
           vec4 hd = texture2D(uHeight, terrUv(wp));
           float alive = step(aOffset.z, hd.g * 1.15) * smoothstep(uR, uR * 0.62, length(rel));
-          float hgt = (0.38 + aOffset.w * 0.62) * (0.65 + hd.g * 0.55) * alive;
+          float hgt = (0.3 + aOffset.w * 0.42) * (0.7 + hd.g * 0.35) * alive; // até ~0,8 m: não esconde as gosmas
           float ang = fract(aOffset.z * 37.17) * 6.2832;
           vec2 dir = vec2(cos(ang), sin(ang));
           float t = position.y;

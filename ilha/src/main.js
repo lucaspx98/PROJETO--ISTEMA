@@ -22,6 +22,7 @@ let playing = false;
 let paused = false;
 let sea = null;
 let saveT = 0;
+let hitStop = 0; // congelamento curtinho no impacto (dá peso ao golpe)
 const input = { mx: 0, mz: 0, attack: false, roll: false, interact: false, eat: false };
 const stick = { id: null, ox: 0, oy: 0, x: 0, y: 0 };
 const look = { id: null, x: 0, y: 0 };
@@ -303,6 +304,7 @@ function handleEvents() {
         Sfx.swing();
         break;
       case 'hit':
+        hitStop = Math.max(hitStop, ev.kind === 'golem' ? 0.07 : 0.05);
         Sfx.hit();
         floater(ev.x, ev.y + 2, ev.z, `${ev.dmg}`, '#ffd23f');
         break;
@@ -318,6 +320,7 @@ function handleEvents() {
         floater(p.x, p.y + 2.6, p.z, `+${ev.n} ${ICONS[ev.item]}`, '#b2f2bb');
         break;
       case 'enemyDie':
+        hitStop = Math.max(hitStop, ev.kind === 'golem' ? 0.35 : 0.09);
         floater(ev.x, ev.y + 1.5, ev.z, `+${ev.coins} 🪙`, '#ffe066');
         break;
       case 'hurt':
@@ -378,7 +381,8 @@ function loop(now) {
   last = now;
   if (playing && !paused) {
     readInput(dt);
-    world.update(dt, input);
+    if (hitStop > 0) hitStop -= dt;
+    else world.update(dt, input);
     input.roll = input.interact = input.eat = false;
     handleEvents();
     updateHud();
