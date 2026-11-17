@@ -20,7 +20,19 @@ Você naufragou. Com a ajuda do **Capitão Bento** (casaco, barba e perna de pau
 ```bash
 npm run test:bot        # joga a história inteira sem tela (node tools/bot.js [semente] [minutos])
 ```
-O robô anda pelo mapa, luta, coleta e constrói. Hoje ele **zera o jogo em ~8,5 min de jogo sem morrer**. Rode sempre que mexer em `world.js` ou `quests.js`.
+O robô anda pelo mapa, luta, coleta e constrói e zera o jogo em ~8 min de jogo. Rode sempre que mexer em `world.js` ou `quests.js`.
+
+Para medir a dificuldade, `HUMAN=0..1` faz o robô jogar como uma pessoa (demora para reagir e às vezes não desvia) e `HPLOG=1` mostra a menor vida em cada missão:
+
+```bash
+HPLOG=1 HUMAN=0.3 node tools/bot.js 7
+```
+
+| Jogador | Menor vida contra o Golem |
+|---|---|
+| perfeito (`HUMAN=1`) | 100% |
+| médio (`HUMAN=0.6`) | 50–75% |
+| desajeitado (`HUMAN=0`–`0.3`) | 25–32% |
 
 ## Monetização
 

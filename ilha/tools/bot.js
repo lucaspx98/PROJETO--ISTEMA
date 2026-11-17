@@ -7,6 +7,22 @@ const seed = Number(process.argv[2] ?? 7);
 const maxMin = Number(process.argv[3] ?? 90);
 const w = new World(seed);
 const DT = 1 / 30;
+// HUMAN=0..1 imita uma pessoa: demora para reagir e às vezes não desvia (1 = perfeito, sem variável = robô perfeito)
+const HUMAN = process.env.HUMAN === undefined ? null : Number(process.env.HUMAN);
+const seen = new Map();
+const minHp = {}; // menor vida (fração) em cada missão // ameaça → { t: quando apareceu, dodge: se vai tentar desviar }
+let rnd = seed * 9301 + 49297;
+const rand = () => ((rnd = (rnd * 9301 + 49297) % 233280) / 233280);
+/** Uma pessoa só reage depois de um tempo e às vezes nem reage. */
+function reacts(key) {
+  if (HUMAN === null) return true;
+  let r = seen.get(key);
+  if (!r) {
+    r = { t: w.stats.time, dodge: rand() < 0.45 + HUMAN * 0.55 };
+    seen.set(key, r);
+  }
+  return r.dodge && w.stats.time - r.t > 0.12 + (1 - HUMAN) * 0.35;
+}
 
 /** Caminho em células (BFS) do jogador até a célula alcançável mais perto do alvo. */
 function path(tx, tz) {
@@ -98,7 +114,7 @@ function think() {
   }
   // perigo: pedra do Golem vindo → sai de baixo
   const shot = w.shots.find((s) => Math.hypot(s.tx - p.x, s.tz - p.z) < 3.4);
-  if (shot) {
+  if (shot && reacts('shot' + shot.id)) {
     const d = Math.hypot(p.x - shot.tx, p.z - shot.tz) || 1;
     input.mx = (p.x - shot.tx) / d || 1;
     input.mz = (p.z - shot.tz) / d;
@@ -127,7 +143,8 @@ function think() {
     const dz = foe.z - p.z;
     const d = fd || 1;
     const danger = foe.type === 'golem' ? 6.2 : 2.6;
-    if (foe.state === 'windup' && d < danger) {
+    if (foe.state !== 'windup') seen.delete('w' + foe.id);
+    if (foe.state === 'windup' && d < danger && reacts('w' + foe.id)) {
       input.mx = -dx / d;
       input.mz = -dz / d;
       input.roll = true;
@@ -185,6 +202,7 @@ for (let s = 0; s < steps && !w.finished; s++) {
     if (ev.type === 'questDone') log.push(`${(w.stats.time / 60).toFixed(1).padStart(5)} min  ✓ ${ev.title}  (nível ${w.player.level}, vida ${Math.round(w.player.hp)}/${w.player.maxHp}, mortes ${w.stats.deaths})`);
     if (ev.type === 'death') log.push(`${(w.stats.time / 60).toFixed(1).padStart(5)} min  ✗ morreu (missão: ${QUESTS[w.quest]?.title})`);
   }
+  minHp[w.quest] = Math.min(minHp[w.quest] ?? 1, w.player.hp / w.player.maxHp);
   w.events.length = 0;
   if (process.env.DEBUG && s % 300 === 0 && w.stats.time > Number(process.env.DEBUG) * 60) {
     const o = w.objective();
@@ -208,6 +226,7 @@ for (let s = 0; s < steps && !w.finished; s++) {
   if (w.quest !== questSeen) questSeen = w.quest;
 }
 console.log(log.join('\n'));
+if (process.env.HPLOG) console.log('vida mínima por missão:', Object.entries(minHp).map(([q, v]) => `${Number(q) + 1}:${Math.round(v * 100)}%`).join(' '));
 const p = w.player;
 console.log(`\n${w.finished ? 'ZEROU O JOGO' : `PAROU na missão ${w.quest + 1}/${QUESTS.length}: ${QUESTS[w.quest]?.title}`} em ${(w.stats.time / 60).toFixed(1)} min de jogo`);
 console.log(`nível ${p.level}, arma ${p.weapon}, mortes ${w.stats.deaths}, inventário ${JSON.stringify(p.inv)}`);

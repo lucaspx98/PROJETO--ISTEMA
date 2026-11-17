@@ -32,7 +32,7 @@ export const ITEM_NAMES = { wood: 'madeira', stone: 'pedra', berry: 'frutinha', 
 const ENEMY = {
   slime: { hp: 30, speed: 3.4, aggro: 13, range: 1.7, dmg: 10, windup: 0.45, cool: 1.1, xp: 8, coin: [2, 4], r: 0.8 },
   wolf: { hp: 50, speed: 6.6, aggro: 17, range: 1.9, dmg: 15, windup: 0.35, cool: 1.0, xp: 15, coin: [4, 7], r: 0.8 },
-  golem: { hp: 1100, speed: 2.7, aggro: 30, range: 4.2, dmg: 30, windup: 1.0, cool: 1.6, xp: 200, coin: [60, 60], r: 2.4 },
+  golem: { hp: 1350, speed: 2.7, aggro: 30, range: 4.2, dmg: 40, windup: 1.0, cool: 1.6, xp: 200, coin: [60, 60], r: 2.4 },
 };
 
 export class Terrain {
@@ -436,10 +436,10 @@ export class World {
   damageEnemy(e, dmg) {
     e.hp -= dmg;
     e.hitT = 0.18;
-    // empurrão
+    // empurrão — mas quem já está armando o bote não recua (precisa desviar ou trocar golpe)
     const p = this.player;
     const d = Math.hypot(e.x - p.x, e.z - p.z) || 1;
-    if (e.type !== 'golem') this.moveBody(e, ((e.x - p.x) / d) * 0.9, ((e.z - p.z) / d) * 0.9, 0.5);
+    if (e.type !== 'golem' && e.state !== 'windup') this.moveBody(e, ((e.x - p.x) / d) * 0.9, ((e.z - p.z) / d) * 0.9, 0.5);
     if (e.state === 'idle') e.state = 'chase';
     this.emit('hit', { x: e.x, z: e.z, y: e.y, dmg, kind: e.type });
     if (e.hp <= 0) this.killEnemy(e);
@@ -687,7 +687,15 @@ export class World {
       const h = this.t.height(x, z);
       if (h < 1) continue;
       const wolfy = (this.night ? 0.55 : 0.12) + (this.t.forest(x, z) > 0.55 ? 0.15 : 0) + (h > 22 ? 0.15 : 0);
-      this.spawnEnemy(this.rand() < wolfy ? 'wolf' : 'slime', x, z);
+      if (this.rand() < wolfy) {
+        // lobos andam em matilha à noite (2 a 3)
+        const pack = this.night ? 2 + (this.rand() < 0.4 ? 1 : 0) : 1;
+        for (let i = 0; i < pack; i++) {
+          const ox = x + (i ? (this.rand() - 0.5) * 5 : 0);
+          const oz = z + (i ? (this.rand() - 0.5) * 5 : 0);
+          if (this.reachable(ox, oz)) this.spawnEnemy('wolf', ox, oz);
+        }
+      } else this.spawnEnemy('slime', x, z);
       return;
     }
   }
