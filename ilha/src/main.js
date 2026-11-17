@@ -19,6 +19,7 @@ const gfx = () => Save.get('gfx') ?? (mobile ? 'medio' : 'alto');
 let view = new View(canvas, world, gfx());
 menuCamera();
 const fps = { t: 0, n: 0 };
+let booted = false; // some a tela de carregamento no primeiro quadro desenhado
 let mapImg = view.minimap();
 let playing = false;
 let paused = false;
@@ -397,6 +398,12 @@ function loop(now) {
   }
   view.frame(dt);
   watchFps(dt);
+  if (!booted) {
+    booted = true;
+    const b = document.getElementById('boot');
+    b?.classList.add('out');
+    setTimeout(() => b?.remove(), 600);
+  }
   requestAnimationFrame(loop);
 }
 requestAnimationFrame(loop);

@@ -6,8 +6,18 @@
     <meta name="theme-color" content="#8fd3ff" />
     <title>Ilha Brava</title>
     <link rel="stylesheet" href="/src/style.css" />
+    <style>
+      /* tela de carregamento: aparece na hora, antes do JavaScript e do 3D */
+      #boot { position: fixed; inset: 0; z-index: 99; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+        background: linear-gradient(#f6b16a 0%, #f08a5d 38%, #3a8fb7 62%, #0e4f78 100%); font-family: system-ui, sans-serif; transition: opacity .5s; }
+      #boot b { font-size: clamp(40px, 9vw, 72px); font-weight: 900; color: #fff8e6; text-shadow: 0 4px 0 #b4581f, 0 8px 0 #6e2f10, 0 14px 30px rgba(0,0,0,.45); }
+      #boot i { width: 46px; height: 46px; border-radius: 50%; border: 5px solid rgba(255,255,255,.3); border-top-color: #fff; animation: bootspin 0.9s linear infinite; }
+      #boot.out { opacity: 0; pointer-events: none; }
+      @keyframes bootspin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
+    <div id="boot"><b>Ilha Brava</b><i></i></div>
     <canvas id="c"></canvas>
 
     <div id="hud" class="hidden">
