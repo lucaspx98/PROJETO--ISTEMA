@@ -83,3 +83,10 @@ body.foto #hud, body.foto .screen { display: none !important; }
 .shop-item i { font-style: normal; font-size: 24px; } .shop-item div { flex: 1; } .shop-item b { display: block; font-size: 13px; } .shop-item small { font-size: 11px; opacity: .75; }
 .shop-item em { font-style: normal; font-weight: 900; font-size: 13px; color: #ffe066; white-space: nowrap; }
 .shop-item.off { opacity: .45; } .shop-item.on { border-color: #69db7c; background: rgba(105,219,124,.15); }
+
+/* desafios do dia (na pausa, cartão claro) */
+#daily { text-align: left; background: #f3efe4; border: 1px solid #e2d9c3; border-radius: 12px; padding: 8px 12px; margin: 4px 0 10px; color: #3a3226; }
+#daily b { font-size: 13px; color: #b4581f; } #daily ul { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+#daily li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 700; }
+#daily li small { opacity: .6; font-weight: 600; } #daily li.ok span { opacity: .5; text-decoration: line-through; }
+#daily li em { font-style: normal; color: #a86a00; font-weight: 900; white-space: nowrap; } #daily li.ok em { color: #2f9e44; }

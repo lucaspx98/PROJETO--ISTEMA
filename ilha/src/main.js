@@ -6,6 +6,8 @@ import { Save } from './storage.js';
 import { Sfx, seaLoop, ambience, step } from './audio.js';
 import { Music } from './music.js';
 import { Ads } from './ads.js';
+import { Daily } from './daily.js';
+Daily.load();
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('c');
@@ -343,6 +345,10 @@ function handleEvents() {
   const p = world.player;
   for (const ev of world.events) {
     view.handle(ev);
+    for (const d of Daily.track(ev, world)) {
+      toast(`🗓️ Desafio concluído: ${d.text} (+${d.coin} 🪙)`);
+      Sfx.quest();
+    }
     switch (ev.type) {
       case 'toast':
         toast(ev.msg);
@@ -556,7 +562,17 @@ function togglePause() {
   $('pause').classList.toggle('hidden', !paused);
   const p = world.player;
   $('pause-info').textContent = `Nível ${p.level} · Arma: ${p.weapon}/4\nMissão ${Math.min(world.quest + 1, QUESTS.length)} de ${QUESTS.length}`;
-  if (paused) save();
+  if (paused) {
+    save();
+    $('daily-list').replaceChildren(
+      ...Daily.list().map((d) => {
+        const li = document.createElement('li');
+        li.className = d.done ? 'ok' : '';
+        li.innerHTML = `<span>${d.done ? '✅' : '▫️'} ${d.text} <small>(${d.got}/${d.n})</small></span><em>${d.done ? 'Pago ✔' : `+${d.coin} 🪙`}</em>`;
+        return li;
+      }),
+    );
+  }
 }
 
 function labels() {

@@ -12,6 +12,7 @@ Você naufragou. Com a ajuda do **Capitão Bento** (casaco, barba e perna de pau
 - Combate com mira automática, rolamento para desviar, inimigos que avisam o golpe (círculo vermelho), chefão Golem.
 - Personagens com juntas (ombro, cotovelo, quadril, joelho), rosto, cabelo e roupas; animação de andar, atacar e rolar.
 - **Loja do Capitão Bento** (fale com ele): poção, botas (+12% de velocidade), armadura (+30 de vida) e roupas (chapéu de palha, colete vermelho ou dourado) que aparecem no herói.
+- **Desafios do dia** (na pausa): 3 tarefas que mudam todo dia, com moedas de prêmio, para voltar à ilha depois de zerar.
 - Jogo salvo sozinho a cada 8 s.
 - **Gráficos:** céu físico com nascer e pôr do sol, mar com ondas, reflexo e espuma na beira, grama que balança com o vento e abre quando você passa, árvores e pedras orgânicas com vento, luz ambiente vinda do céu, sombras suaves, nuvens, lua, estrelas e vaga-lumes, bloom e correção de cor (`src/gfx.js`).
 - **Qualidade Alto / Médio / Baixo** no menu (🎨). No celular começa em Médio; se o jogo ficar travando, baixa sozinho.
@@ -66,7 +67,8 @@ src/
   gfx.js       céu, mar, grama, terreno, nuvens, pós-processamento e níveis de qualidade
   render.js    cena 3D, câmera em terceira pessoa, animações, partículas, minimapa
   main.js      laço do jogo, joystick/teclado, HUD, menus, anúncios
-  audio.js     sons sintetizados e mar
+  audio.js     sons sintetizados, mar, passos e ambiente
+  daily.js     desafios do dia
 tools/bot.js   robô que joga a história
 android/       projeto Android (Capacitor, horizontal)
 ```
