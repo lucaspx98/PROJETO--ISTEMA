@@ -55,7 +55,11 @@ export class View {
     this.buildActors();
     this.buildSites();
     this.fx = [];
-    this.fxGeo = new THREE.BoxGeometry(0.22, 0.22, 0.22);
+    this.fxMesh = new THREE.InstancedMesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), new THREE.MeshBasicMaterial({ color: 0xffffff }), 160);
+    this.fxMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(160 * 3), 3);
+    this.fxMesh.frustumCulled = false;
+    this.fxMesh.count = 0;
+    this.scene.add(this.fxMesh);
     this.shakes = new Map();
     this.enemyMeshes = new Map();
     this.shotMeshes = new Map();
@@ -70,6 +74,7 @@ export class View {
   setQuality(q) {
     const Q = G.QUALITY[q] ?? G.QUALITY.alto;
     this.quality = q;
+    this.nodesDirty = true;
     this.Q = Q;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.ratio));
     if (this.sun.shadow.mapSize.x !== Q.shadow) {
@@ -139,7 +144,7 @@ export class View {
   }
 
   buildWater() {
-    const geo = new THREE.PlaneGeometry(1400, 1400, 280, 280).rotateX(-Math.PI / 2);
+    const geo = new THREE.PlaneGeometry(1800, 1800, 180, 180).rotateX(-Math.PI / 2);
     this.waterMat = G.waterMaterial(this.field);
     const water = new THREE.Mesh(geo, this.waterMat);
     water.position.y = -0.2;
@@ -226,39 +231,50 @@ export class View {
 
   // ---------- recursos (instanciados) ----------
 
+  /**
+   * Cada recurso tem 3 versões instanciadas: perto (detalhada), longe (leve) e sombra (leve,
+   * só perto do herói, na camada 1 que só a luz do sol enxerga). A cada quadro só entra o que
+   * a câmera vê: isso tira mais de um milhão de triângulos por quadro.
+   */
   buildNodes() {
-    const parts = Mo.nodeParts();
-    this.inst = {};
+    const hi = Mo.nodeParts(false);
+    const lo = Mo.nodeParts(true);
+    this.nodeSets = {};
     const byType = {};
     this.w.nodes.forEach((n) => (byType[n.type] ??= []).push(n));
-    const make = (key, list) => {
-      this.inst[key] = parts[key].map(([geo, material]) => {
-        const im = new THREE.InstancedMesh(geo, material, list.length);
-        im.castShadow = true;
-        im.receiveShadow = true;
+    const mk = (parts, cap, shadow) =>
+      parts.map(([geo, material]) => {
+        const im = new THREE.InstancedMesh(geo, material, cap);
+        im.count = 0;
+        im.visible = false;
         im.frustumCulled = false;
-        if (material.userData.vary) {
-          const c = new THREE.Color();
-          list.forEach((n, i) => {
-            const k = Math.sin(n.x * 12.9898 + n.z * 78.233) * 43758.5453;
-            const f = k - Math.floor(k);
-            c.setHSL(0, 0, 1).offsetHSL((f - 0.5) * 0.08, 0, (f - 0.5) * 0.22);
-            c.r *= 1 + (f - 0.5) * 0.25;
-            im.setColorAt(i, c);
-          });
+        if (shadow) {
+          im.castShadow = true;
+          im.layers.set(1);
+        } else {
+          im.receiveShadow = true;
+          if (material.userData.vary) im.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(cap * 3), 3);
         }
         this.scene.add(im);
         return im;
       });
-    };
+    const add = (key, list) => (this.nodeSets[key] = { key, list, near: mk(hi[key], list.length), far: mk(lo[key], list.length), shadow: mk(lo[key], list.length, true) });
     Object.entries(byType).forEach(([type, list]) => {
-      make(type, list);
-      if (type === 'bush') make('berries', list);
-      list.forEach((n, i) => {
-        n.slot = i;
+      add(type, list);
+      if (type === 'bush') add('berries', list);
+      list.forEach((n) => {
+        const k = Math.sin(n.x * 12.9898 + n.z * 78.233) * 43758.5453;
+        const f = k - Math.floor(k);
+        n.tint = new THREE.Color(1, 1, 1).offsetHSL((f - 0.5) * 0.08, 0, (f - 0.5) * 0.22);
+        n.tint.r *= 1 + (f - 0.5) * 0.25;
+        n.mat = new THREE.Matrix4();
         this.placeNode(n);
       });
     });
+    this.sun.shadow.camera.layers.enable(1);
+    this.frustum = new THREE.Frustum();
+    this.cullSphere = new THREE.Sphere();
+    this.cullCam = { pos: new THREE.Vector3(1e9, 0, 0), q: new THREE.Quaternion() };
     // facho de luz das relíquias (para achar de longe)
     this.beams = this.w.nodes
       .filter((n) => n.type === 'relic')
@@ -272,21 +288,60 @@ export class View {
   }
 
   placeNode(n, shake = 0) {
-    const visible = n.alive || n.type === 'bush';
-    const s = visible ? n.scale : 0;
     tmpQ.setFromAxisAngle(UP, n.rot);
     if (shake) tmpQ.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), shake));
-    tmpM.compose(tmpV.set(n.x, n.y - 0.05, n.z), tmpQ, tmpS.setScalar(s));
-    this.inst[n.type].forEach((im) => {
-      im.setMatrixAt(n.slot, tmpM);
-      im.instanceMatrix.needsUpdate = true;
-    });
-    if (n.type === 'bush') {
-      tmpM.compose(tmpV.set(n.x, n.y - 0.05, n.z), tmpQ, tmpS.setScalar(n.alive ? n.scale : 0));
-      this.inst.berries.forEach((im) => {
-        im.setMatrixAt(n.slot, tmpM);
-        im.instanceMatrix.needsUpdate = true;
+    n.mat.compose(tmpV.set(n.x, n.y - 0.05, n.z), tmpQ, tmpS.setScalar(n.scale));
+    this.nodesDirty = true;
+  }
+
+  /** Escolhe o que desenhar: perto/longe dentro da visão da câmera e as sombras perto do herói. */
+  cullNodes() {
+    const cam = this.camera;
+    const cp = cam.position;
+    const c = this.cullCam;
+    if (!this.nodesDirty && cp.distanceToSquared(c.pos) < 0.04 && cam.quaternion.angleTo(c.q) < 0.01) return;
+    this.nodesDirty = false;
+    c.pos.copy(cp);
+    c.q.copy(cam.quaternion);
+    cam.updateMatrixWorld();
+    this.frustum.setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+    const p = this.w.player;
+    const near2 = this.Q.near ** 2;
+    const far2 = this.Q.far ** 2;
+    const sph = this.cullSphere;
+    const write = (ims, k, n) =>
+      ims.forEach((im) => {
+        n.mat.toArray(im.instanceMatrix.array, k * 16);
+        if (im.instanceColor) n.tint.toArray(im.instanceColor.array, k * 3);
       });
+    const done = (ims, k) =>
+      ims.forEach((im) => {
+        im.count = k;
+        im.visible = k > 0;
+        im.instanceMatrix.needsUpdate = true;
+        if (im.instanceColor) im.instanceColor.needsUpdate = true;
+      });
+    for (const set of Object.values(this.nodeSets)) {
+      let kn = 0;
+      let kf = 0;
+      let ks = 0;
+      const berries = set.key === 'berries';
+      for (const n of set.list) {
+        if (berries ? !n.alive : !n.alive && n.type !== 'bush') continue;
+        if (Math.abs(n.x - p.x) < 40 && Math.abs(n.z - p.z) < 40) write(set.shadow, ks++, n);
+        const dx = n.x - cp.x;
+        const dz = n.z - cp.z;
+        const d2 = dx * dx + dz * dz;
+        if (d2 > far2) continue;
+        sph.center.set(n.x, n.y + 2.5 * n.scale, n.z);
+        sph.radius = 4 * n.scale;
+        if (!this.frustum.intersectsSphere(sph)) continue;
+        if (d2 < near2) write(set.near, kn++, n);
+        else write(set.far, kf++, n);
+      }
+      done(set.near, kn);
+      done(set.far, kf);
+      done(set.shadow, ks);
     }
   }
 
@@ -294,9 +349,11 @@ export class View {
 
   buildActors() {
     this.hero = Mo.humanoid();
+    Mo.bakeRig(this.hero.root, { keep: [this.hero.torso] });
     this.heroWeaponLevel = 0;
     this.scene.add(this.hero.root);
     this.npc = Mo.humanoid({ captain: true });
+    Mo.bakeRig(this.npc.root, { keep: [this.npc.torso] });
     this.npc.root.position.set(NPC.x, this.w.t.height(NPC.x, NPC.z), NPC.z);
     this.npc.root.rotation.y = Math.PI;
     this.mark = new THREE.Mesh(new THREE.ConeGeometry(0.28, 0.7, 4), new THREE.MeshBasicMaterial({ color: 0xffd23f }));
@@ -347,12 +404,9 @@ export class View {
 
   burst(x, y, z, color, n = 8, speed = 5) {
     for (let i = 0; i < n; i++) {
-      if (this.fx.length > 120) return;
-      const m = new THREE.Mesh(this.fxGeo, new THREE.MeshBasicMaterial({ color }));
-      m.position.set(x, y, z);
-      this.scene.add(m);
+      if (this.fx.length >= 160) return;
       const a = Math.random() * 6.28;
-      this.fx.push({ m, vx: Math.cos(a) * speed * Math.random(), vy: 3 + Math.random() * speed, vz: Math.sin(a) * speed * Math.random(), life: 0.7 });
+      this.fx.push({ x, y, z, r: Math.random() * 6, c: new THREE.Color(color), vx: Math.cos(a) * speed * Math.random(), vy: 3 + Math.random() * speed, vz: Math.sin(a) * speed * Math.random(), life: 0.7 });
     }
   }
 
@@ -440,6 +494,9 @@ export class View {
     G.windUniform.value = T;
     const wm = this.waterMat.uniforms;
     wm.uTime.value = T;
+    // o mar acompanha a câmera em passos de 10 m (a grade não "anda" com as ondas)
+    this.water.position.x = Math.round(this.camera.position.x / 10) * 10;
+    this.water.position.z = Math.round(this.camera.position.z / 10) * 10;
     wm.uSunDir.value.copy(this.sunDir.y > -0.05 ? this.sunDir : moonDir);
     wm.uSunCol.value.copy(this.sun.color).multiplyScalar(this.sunDir.y > -0.05 ? 1 - dark * 0.6 : 0.5);
     wm.uNight.value = dark;
@@ -450,7 +507,7 @@ export class View {
     this.grass.update(T, p);
     if (this.Q.clouds) {
       const tint = C(0xffffff).lerp(C(0xffb48a), low * (1 - dark)).multiplyScalar(3.2 * (1 - dark) + 0.15);
-      this.clouds.update(dt, this.camera.position, tint);
+      this.clouds.update(dt, this.camera, tint);
     }
     this.motes.update(T, p, (x, z) => w.t.height(x, z), dark);
 
@@ -519,7 +576,7 @@ export class View {
         m.root.position.y -= wind ? 0.2 : 0;
         m.tail.rotation.x = 0.6 + Math.sin(T * 10) * 0.2;
         m.tail.rotation.y = Math.sin(T * 7 + e.id) * 0.3;
-        m.body.material.color.set(hitFlash ? 0xffffff : wind ? 0xff6a4a : 0x6e7279);
+        m.mats.forEach((mt) => mt.emissive.set(hitFlash ? 0x777777 : wind ? 0x6a1808 : 0x000000));
         m.head.rotation.x = wind ? 0.35 : Math.sin(T * 3 + e.id) * 0.06;
       } else {
         const stomp = e.state === 'chase' ? Math.sin(T * 5) : 0;
@@ -598,16 +655,22 @@ export class View {
       const f = this.fx[i];
       f.life -= dt;
       f.vy -= 14 * dt;
-      f.m.position.x += f.vx * dt;
-      f.m.position.y += f.vy * dt;
-      f.m.position.z += f.vz * dt;
-      f.m.rotation.x += dt * 8;
-      f.m.scale.setScalar(Math.max(0.01, f.life / 0.7));
-      if (f.life <= 0) {
-        this.scene.remove(f.m);
-        this.fx.splice(i, 1);
-      }
+      f.x += f.vx * dt;
+      f.y += f.vy * dt;
+      f.z += f.vz * dt;
+      f.r += dt * 8;
+      if (f.life <= 0) this.fx.splice(i, 1);
     }
+    const fm = this.fxMesh;
+    this.fx.forEach((f, i) => {
+      tmpQ.setFromAxisAngle(tmpV.set(1, 0.3, 0).normalize(), f.r);
+      tmpM.compose(tmpV.set(f.x, f.y, f.z), tmpQ, tmpS.setScalar(Math.max(0.01, f.life / 0.7)));
+      fm.setMatrixAt(i, tmpM);
+      fm.setColorAt(i, f.c);
+    });
+    fm.count = this.fx.length;
+    fm.instanceMatrix.needsUpdate = true;
+    fm.instanceColor.needsUpdate = true;
     for (let i = this.rings.length - 1; i >= 0; i--) {
       const g = this.rings[i];
       g.t += dt;
@@ -627,6 +690,7 @@ export class View {
     const cy = Math.max(p.y + 1.8 + Math.sin(this.camPitch) * cd, w.t.height(cx, cz) + 1.6, 1.2);
     this.camera.position.lerp(tmpV.set(cx, cy, cz), Math.min(1, dt * 10));
     this.camera.lookAt(p.x, p.y + 1.8, p.z);
+    this.cullNodes();
     if (this.post) this.post.composer.render(dt);
     else this.renderer.render(this.scene, this.camera);
   }

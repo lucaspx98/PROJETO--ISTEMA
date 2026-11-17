@@ -98,8 +98,8 @@ const clean = (g) => {
   return g.index ? g : mergeVertices(g);
 };
 
-function canopy(parts, y0, y1) {
-  const g = mergeGeometries(parts.map(([r, x, y, z, seed]) => blob(r, 2, 0.13, seed).translate(x, y, z)));
+function canopy(parts, y0, y1, detail = 2) {
+  const g = mergeGeometries(parts.map(([r, x, y, z, seed]) => blob(r, detail, 0.13, seed).translate(x, y, z)));
   // embaixo e por dentro mais escuro (oclusão), em cima mais claro (luz do céu)
   return paint(g, (x, y, z, nx, ny) => {
     const k = Math.min(1, Math.max(0, (y - y0) / (y1 - y0)));
@@ -108,8 +108,8 @@ function canopy(parts, y0, y1) {
   });
 }
 
-function trunk(h, r0, r1, bend) {
-  let g = new THREE.CylinderGeometry(r1, r0, h, 8, 5);
+function trunk(h, r0, r1, bend, radial = 8, rows = 5) {
+  let g = new THREE.CylinderGeometry(r1, r0, h, radial, rows);
   g.deleteAttribute('uv');
   g = mergeVertices(g);
   const p = g.attributes.position;
@@ -128,8 +128,8 @@ function branch(len, r, ang, tilt, y) {
   return clean(g);
 }
 
-function treeGeo() {
-  const wood = mergeGeometries([trunk(3.0, 0.34, 0.19, 0.25), branch(1.1, 0.12, 0.6, 0.9, 1.9), branch(0.9, 0.1, 3.4, 0.8, 2.3)]);
+function treeGeo(low) {
+  const wood = low ? trunk(3.0, 0.34, 0.19, 0.25, 5, 2) : mergeGeometries([trunk(3.0, 0.34, 0.19, 0.25), branch(1.1, 0.12, 0.6, 0.9, 1.9), branch(0.9, 0.1, 3.4, 0.8, 2.3)]);
   paint(wood, (x, y) => {
     const v = 0.55 + Math.min(1, y / 3) * 0.45;
     return [v, v * 0.95, v * 0.9];
@@ -142,9 +142,10 @@ function treeGeo() {
       [1.0, 0.1, 4.75, -0.55, 4],
       [0.95, -0.3, 3.5, 1.0, 5],
       [0.9, 0.45, 3.2, -1.0, 6],
-    ],
+    ].slice(0, low ? 4 : 6),
     2.3,
     5.6,
+    low ? 0 : 2,
   );
   return [
     [wood, NM.bark],
@@ -152,8 +153,8 @@ function treeGeo() {
   ];
 }
 
-function pineGeo() {
-  const wood = paint(trunk(2.4, 0.26, 0.14, 0), (x, y) => [0.5 + y * 0.15, 0.48 + y * 0.14, 0.45 + y * 0.12]);
+function pineGeo(low) {
+  const wood = paint(trunk(2.4, 0.26, 0.14, 0, low ? 5 : 8, low ? 1 : 5), (x, y) => [0.5 + y * 0.15, 0.48 + y * 0.14, 0.45 + y * 0.12]);
   wood.translate(0, 0, 0);
   const tiers = [];
   const T = [
@@ -162,8 +163,8 @@ function pineGeo() {
     [1.2, 1.8, 3.8],
     [0.8, 1.5, 4.75],
   ];
-  T.forEach(([r, h, y], i) => {
-    let g = new THREE.ConeGeometry(r, h, 11, 2);
+  (low ? [T[0], T[1], [1.0, 2.2, 4.3]] : T).forEach(([r, h, y], i) => {
+    let g = new THREE.ConeGeometry(r, h, low ? 7 : 11, low ? 1 : 2);
     g.deleteAttribute('uv');
     g = mergeVertices(g);
     const p = g.attributes.position;
@@ -191,8 +192,8 @@ function pineGeo() {
   ];
 }
 
-function rockGeo() {
-  let g = new THREE.IcosahedronGeometry(1, 2);
+function rockGeo(low) {
+  let g = new THREE.IcosahedronGeometry(1, low ? 1 : 2);
   g.deleteAttribute('normal');
   g.deleteAttribute('uv');
   g = mergeVertices(g);
@@ -210,27 +211,31 @@ function rockGeo() {
   return [[g, NM.rock]];
 }
 
-function bushGeo() {
+function bushGeo(low) {
   const g = canopy(
     [
       [0.75, 0, 0.55, 0, 11],
       [0.6, 0.55, 0.45, 0.2, 12],
       [0.6, -0.5, 0.45, -0.25, 13],
       [0.55, 0.05, 0.85, -0.45, 14],
-    ],
+    ].slice(0, low ? 3 : 4),
     0,
     1.35,
+    low ? 0 : 1,
   );
   return [[g, NM.bush]];
 }
 
-/** Geometrias dos recursos, já posicionadas (base no chão), por tipo: [geometria, material][] */
-export function nodeParts() {
+/**
+ * Geometrias dos recursos, já posicionadas (base no chão), por tipo: [geometria, material][].
+ * low = versão leve, usada de longe e para desenhar as sombras.
+ */
+export function nodeParts(low = false) {
   return {
-    tree: treeGeo(),
-    pine: pineGeo(),
-    rock: rockGeo(),
-    bush: bushGeo(),
+    tree: treeGeo(low),
+    pine: pineGeo(low),
+    rock: rockGeo(low),
+    bush: bushGeo(low),
     berries: [[berriesGeo(), M.berry]],
     crystal: [
       [new THREE.OctahedronGeometry(0.6, 0).scale(0.8, 2, 0.8).translate(0, 1.0, 0), M.crystal],
@@ -467,6 +472,64 @@ export function slime() {
   return { root, body };
 }
 
+// ---------- otimização: junta as peças de cada articulação numa malha só ----------
+
+const RIG = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72 });
+
+/**
+ * Em cada grupo (articulação), junta as peças opacas numa malha com a cor nos vértices.
+ * O herói cai de ~50 desenhos por quadro para ~13 (e o mesmo nas sombras).
+ * Peças que brilham, transparentes ou listadas em keep ficam separadas.
+ */
+export function bakeRig(root, { keep = [], material = RIG } = {}) {
+  const mats = new Map();
+  const matFor = (src) => {
+    const key = `${src.side}|${!!src.flatShading}`;
+    if (!mats.has(key)) {
+      const m = material.clone();
+      m.side = src.side;
+      m.flatShading = !!src.flatShading;
+      mats.set(key, m);
+    }
+    return mats.get(key);
+  };
+  const groups = [];
+  root.traverse((o) => {
+    if (!o.isMesh) groups.push(o);
+  });
+  for (const g of groups) {
+    const buckets = new Map();
+    for (const c of g.children) {
+      if (!c.isMesh || keep.includes(c) || c.material.transparent) continue;
+      if (c.material.emissive && c.material.emissive.getHex() !== 0) continue;
+      const m = matFor(c.material);
+      if (!buckets.has(m)) buckets.set(m, []);
+      buckets.get(m).push(c);
+    }
+    for (const [m, meshes] of buckets) {
+      if (meshes.length < 2) continue;
+      const geos = meshes.map((c) => {
+        c.updateMatrix();
+        let geo = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
+        for (const k of Object.keys(geo.attributes)) if (k !== 'position' && k !== 'normal') geo.deleteAttribute(k);
+        geo.applyMatrix4(c.matrix);
+        const n = geo.attributes.position.count;
+        const col = new Float32Array(n * 3);
+        const cc = c.material.color;
+        for (let i = 0; i < n; i++) col.set([cc.r, cc.g, cc.b], i * 3);
+        geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+        return geo;
+      });
+      const merged = new THREE.Mesh(mergeGeometries(geos), m);
+      merged.castShadow = true;
+      merged.receiveShadow = true;
+      meshes.forEach((c) => g.remove(c));
+      g.add(merged);
+    }
+  }
+  return [...mats.values()];
+}
+
 export function wolf() {
   const root = new THREE.Group();
   const fur = P.fur.clone();
@@ -503,7 +566,9 @@ export function wolf() {
   tail.add(part(new THREE.ConeGeometry(0.14, 0.75, 8).rotateX(-Math.PI / 2), P.furDark, 0, 0, -0.36), ball(0.07, P.furLight, 0, 0, -0.7));
   tail.rotation.x = 0.6;
   root.add(tail);
-  return { root, body: chest, legs, tail, head };
+  // cada lobo tem seu material (para piscar ao levar golpe)
+  const mats = bakeRig(root, { material: RIG.clone() });
+  return { root, mats, legs, tail, head };
 }
 
 export function golem() {

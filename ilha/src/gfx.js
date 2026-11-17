@@ -11,9 +11,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { BUILDS, CAMP, HALF } from './world.js';
 
 export const QUALITY = {
-  alto: { ratio: 1.75, post: true, msaa: 4, grass: 70000, grassR: 30, shadow: 2048, clouds: true },
-  medio: { ratio: 1.25, post: true, msaa: 0, grass: 26000, grassR: 22, shadow: 1024, clouds: true },
-  baixo: { ratio: 1.0, post: false, msaa: 0, grass: 0, grassR: 0, shadow: 1024, clouds: false },
+  alto: { ratio: 1.75, post: true, msaa: 4, grass: 70000, grassR: 30, shadow: 2048, clouds: true, near: 70, far: 400 },
+  medio: { ratio: 1.25, post: true, msaa: 0, grass: 26000, grassR: 22, shadow: 1024, clouds: true, near: 50, far: 320 },
+  baixo: { ratio: 1.0, post: false, msaa: 0, grass: 0, grassR: 0, shadow: 1024, clouds: false, near: 35, far: 240 },
 };
 
 // ruído de valor em GLSL (usado no terreno e no mar)
@@ -105,7 +105,8 @@ export function terrainMaterial() {
         // rocha nas encostas (com estrias)
         float slope = 1.0 - normalize(vWN).y;
         float strata = 0.8 + 0.2 * sin(vWP.y * 3.0 + n2 * 4.0);
-        vec3 rock = vec3(0.16, 0.145, 0.13) * (0.6 + n2 * 0.5 + n3 * 0.25 + n4 * 0.2) * strata;
+        vec3 rock = vec3(0.24, 0.22, 0.2) * (0.55 + n2 * 0.5 + n3 * 0.3 + n4 * 0.25) * strata;
+        rock = mix(rock, vec3(0.13, 0.2, 0.07), smoothstep(0.55, 0.8, n2) * 0.6); // musgo
         float rk = smoothstep(0.36, 0.42, slope + (n1 - 0.5) * 0.2 + (n3 - 0.5) * 0.08) * smoothstep(0.6, 1.6, vWP.y);
         diffuseColor.rgb = mix(diffuseColor.rgb, rock, rk);
         // areia: ondulações e areia molhada perto da água
@@ -363,33 +364,50 @@ function cloudTexture() {
   return t;
 }
 
+/** Nuvens: todas numa malha só (1 desenho), cada uma um retângulo virado para a câmera. */
 export class Clouds {
   constructor(n = 22) {
-    this.group = new THREE.Group();
-    const tex = cloudTexture();
-    this.mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, fog: false, opacity: 0.9 });
     this.list = [];
     for (let i = 0; i < n; i++) {
-      const s = new THREE.Sprite(this.mat);
       const a = Math.random() * Math.PI * 2;
       const d = 380 + Math.random() * 180;
       const sc = 130 + Math.random() * 130;
-      s.scale.set(sc, sc * 0.45, 1);
-      s.userData = { x: Math.cos(a) * d, z: Math.sin(a) * d, y: 150 + Math.random() * 90 };
-      this.group.add(s);
-      this.list.push(s);
+      this.list.push({ x: Math.cos(a) * d, z: Math.sin(a) * d, y: 150 + Math.random() * 90, w: sc / 2, h: sc * 0.225, flip: Math.random() < 0.5 });
     }
-    this.group.renderOrder = -1;
+    const geo = new THREE.BufferGeometry();
+    this.pos = new Float32Array(n * 12);
+    const uv = new Float32Array(n * 8);
+    const idx = [];
+    this.list.forEach((c, i) => {
+      uv.set(c.flip ? [1, 0, 0, 0, 0, 1, 1, 1] : [0, 0, 1, 0, 1, 1, 0, 1], i * 8);
+      const b = i * 4;
+      idx.push(b, b + 1, b + 2, b, b + 2, b + 3);
+    });
+    geo.setAttribute('position', new THREE.BufferAttribute(this.pos, 3));
+    geo.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+    geo.setIndex(idx);
+    this.mat = new THREE.MeshBasicMaterial({ map: cloudTexture(), transparent: true, depthWrite: false, fog: false, side: THREE.DoubleSide });
+    this.group = new THREE.Mesh(geo, this.mat);
+    this.group.frustumCulled = false;
+    this.right = new THREE.Vector3();
   }
 
   update(dt, cam, tint) {
     this.mat.color.copy(tint);
-    for (const s of this.list) {
-      const u = s.userData;
-      u.x += dt * 1.6;
-      if (u.x > 560) u.x -= 1120;
-      s.position.set(cam.x + u.x, u.y, cam.z + u.z);
-    }
+    const r = this.right.setFromMatrixColumn(cam.matrixWorld, 0);
+    r.y = 0;
+    r.normalize();
+    const cp = cam.position;
+    this.list.forEach((c, i) => {
+      c.x += dt * 1.6;
+      if (c.x > 560) c.x -= 1120;
+      const cx = cp.x + c.x;
+      const cz = cp.z + c.z;
+      const wx = r.x * c.w;
+      const wz = r.z * c.w;
+      this.pos.set([cx - wx, c.y - c.h, cz - wz, cx + wx, c.y - c.h, cz + wz, cx + wx, c.y + c.h, cz + wz, cx - wx, c.y + c.h, cz - wz], i * 12);
+    });
+    this.group.geometry.attributes.position.needsUpdate = true;
   }
 }
 
