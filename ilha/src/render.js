@@ -536,8 +536,8 @@ export class View {
     this.scene.fog.density = 0.0024 + dark * 0.002;
     this.stars.material.opacity = THREE.MathUtils.smoothstep(dark, 0.4, 0.9);
     this.stars.position.copy(this.camera.position);
-    this.lantern.intensity = dark * 30;
-    this.lantern.position.set(p.x, p.y + 2.6, p.z);
+    this.lantern.intensity = dark * 16;
+    this.lantern.position.set(p.x + Math.sin(p.yaw) * 1.5, p.y + 3.4, p.z + Math.cos(p.yaw) * 1.5);
     G.windUniform.value = T;
     const wm = this.waterMat.uniforms;
     wm.uTime.value = T;
